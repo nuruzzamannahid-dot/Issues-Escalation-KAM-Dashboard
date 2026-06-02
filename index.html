@@ -422,7 +422,79 @@
         #settingsModal > div:first-child { background: var(--modal-overlay); }
         .theme-toggle { background: var(--toggle-bg); border-color: var(--toggle-border); }
         .theme-toggle .toggle-knob { background: var(--toggle-knob); }
+
+        /* ===== IR MAIL TRACKER STYLES ===== */
+        .ir-summary-card {
+            border-top: 4px solid;
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+        .ir-summary-card::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 80px;
+            height: 80px;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+            border-radius: 50%;
+            transform: translate(30%, -30%);
+        }
+        .ir-progress-bar {
+            height: 6px;
+            background: #e2e8f0;
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 12px;
+        }
+        .ir-progress-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.6s ease;
+        }
+        .status-badge-solved {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 14px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 700;
+            background: #d1fae5;
+            color: #065f46;
+            border: 1px solid #a7f3d0;
+        }
+        .status-badge-pending {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 14px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 700;
+            background: #fef3c7;
+            color: #92400e;
+            border: 1px solid #fde68a;
+        }
+        .gap-same { color: #10b981; font-weight: 700; }
+        .gap-days { color: #f59e0b; font-weight: 700; }
+        .gap-long { color: #f43f5e; font-weight: 700; }
+        .ir-kam-card {
+            border-left: 4px solid;
+            padding: 24px;
+        }
+        .ir-kam-card.ahmed { border-color: #8b5cf6; }
+        .ir-kam-card.nahid { border-color: #10b981; }
+        .ir-mini-stat {
+            background: var(--stat-bg);
+            border-radius: 12px;
+            padding: 16px;
+            text-align: center;
+            border: 1px solid var(--border-color);
+        }
     </style>
+<base target="_blank">
 <base target="_blank">
 </head>
 <body class="min-h-screen pb-10">
@@ -433,7 +505,7 @@
             <div class="auth-logo">📋</div>
             <h2 class="text-xl font-bold text-slate-800 mb-1">Issue Tracker</h2>
             <p class="text-sm text-slate-500 mb-6">Authorized personnel only. Please sign in to continue.</p>
-            
+
             <div class="space-y-4">
                 <div>
                     <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1.5">Username</label>
@@ -458,7 +530,7 @@
                 <button onclick="doLogin()" class="auth-btn">Sign In</button>
                 <div id="authError" class="auth-error">Invalid username or password</div>
             </div>
-            
+
             <div class="mt-6 pt-4 border-t border-slate-100 text-center">
                 <p class="text-xs text-slate-400">© Carrybee Operations</p>
             </div>
@@ -496,7 +568,7 @@
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
                         Manage Users
                     </button>
-                    
+
                     <!-- Dark Mode Toggle -->
                     <div class="theme-toggle" id="themeToggle" onclick="toggleDarkMode()" title="Toggle Dark Mode">
                         <div class="toggle-knob">
@@ -625,6 +697,138 @@
                 <div class="chart-container"><canvas id="dailyChart"></canvas></div>
             </div>
 
+            <!-- ===================== IR MAIL FEEDBACK TRACKER ===================== -->
+            <div class="card p-6" id="irMailSection">
+                <div class="section-title mb-5">📧 IR Mail Feedback Tracker</div>
+
+                <!-- IR Summary Cards -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6" id="irSummaryCards">
+                    <div class="card ir-summary-card border-purple">
+                        <div class="text-xs text-slate-500 font-semibold uppercase tracking-wider mb-2 flex items-center gap-2">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+                            Total Raised
+                        </div>
+                        <div class="text-3xl font-extrabold text-purple-600" id="irTotalRaised">0</div>
+                    </div>
+                    <div class="card ir-summary-card border-amber">
+                        <div class="text-xs text-slate-500 font-semibold uppercase tracking-wider mb-2 flex items-center gap-2">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            Pending
+                        </div>
+                        <div class="text-3xl font-extrabold text-amber-500" id="irPending">0</div>
+                    </div>
+                    <div class="card ir-summary-card border-green">
+                        <div class="text-xs text-slate-500 font-semibold uppercase tracking-wider mb-2 flex items-center gap-2">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            Solved
+                        </div>
+                        <div class="text-3xl font-extrabold text-emerald-600" id="irSolved">0</div>
+                    </div>
+                    <div class="card ir-summary-card border-amber">
+                        <div class="text-xs text-slate-500 font-semibold uppercase tracking-wider mb-2 flex items-center gap-2">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z"></path></svg>
+                            Solve Ratio
+                        </div>
+                        <div class="text-3xl font-extrabold text-amber-500" id="irSolveRatio">0%</div>
+                    </div>
+                </div>
+
+                <!-- IR KAM Cards -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-6" id="irKamCards">
+                    <!-- Ahmed IR Card -->
+                    <div class="card ir-kam-card ahmed card-hover fade-in">
+                        <div class="flex items-center justify-between mb-5">
+                            <div class="flex items-center gap-4">
+                                <div class="avatar avatar-ahmed" style="width: 40px; height: 40px; font-size: 12px;">AA</div>
+                                <div>
+                                    <h3 class="font-bold text-slate-800 text-base">Ahmed Asif Rashid</h3>
+                                    <p class="text-xs text-slate-400 mt-0.5">ASSISTANT MANAGER</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-3 gap-3 mb-4">
+                            <div class="ir-mini-stat">
+                                <div class="text-2xl font-bold text-purple-600" id="irAhmedRaised">0</div>
+                                <div class="text-xs text-slate-400 mt-1 font-medium">RAISED</div>
+                            </div>
+                            <div class="ir-mini-stat">
+                                <div class="text-2xl font-bold text-amber-500" id="irAhmedPending">0</div>
+                                <div class="text-xs text-slate-400 mt-1 font-medium">PENDING</div>
+                            </div>
+                            <div class="ir-mini-stat">
+                                <div class="text-2xl font-bold text-emerald-600" id="irAhmedSolved">0</div>
+                                <div class="text-xs text-slate-400 mt-1 font-medium">SOLVED</div>
+                            </div>
+                        </div>
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-xs text-slate-500 font-medium">solve ratio</span>
+                            <span class="text-xs font-bold text-slate-700" id="irAhmedRatio">0%</span>
+                        </div>
+                        <div class="ir-progress-bar">
+                            <div class="ir-progress-fill bg-purple-500" id="irAhmedProgress" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <!-- Nahid IR Card -->
+                    <div class="card ir-kam-card nahid card-hover fade-in">
+                        <div class="flex items-center justify-between mb-5">
+                            <div class="flex items-center gap-4">
+                                <div class="avatar avatar-nahid" style="width: 40px; height: 40px; font-size: 12px;">NN</div>
+                                <div>
+                                    <h3 class="font-bold text-slate-800 text-base">Nuruzzaman Nahid</h3>
+                                    <p class="text-xs text-slate-400 mt-0.5">ASSOCIATE</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-3 gap-3 mb-4">
+                            <div class="ir-mini-stat">
+                                <div class="text-2xl font-bold text-purple-600" id="irNahidRaised">0</div>
+                                <div class="text-xs text-slate-400 mt-1 font-medium">RAISED</div>
+                            </div>
+                            <div class="ir-mini-stat">
+                                <div class="text-2xl font-bold text-amber-500" id="irNahidPending">0</div>
+                                <div class="text-xs text-slate-400 mt-1 font-medium">PENDING</div>
+                            </div>
+                            <div class="ir-mini-stat">
+                                <div class="text-2xl font-bold text-emerald-600" id="irNahidSolved">0</div>
+                                <div class="text-xs text-slate-400 mt-1 font-medium">SOLVED</div>
+                            </div>
+                        </div>
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-xs text-slate-500 font-medium">solve ratio</span>
+                            <span class="text-xs font-bold text-slate-700" id="irNahidRatio">0%</span>
+                        </div>
+                        <div class="ir-progress-bar">
+                            <div class="ir-progress-fill bg-emerald-500" id="irNahidProgress" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- IR Mail Table -->
+                <div class="overflow-x-auto">
+                    <table class="issues-table" id="irMailTable">
+                        <thead>
+                            <tr>
+                                <th style="width: 40px">#</th>
+                                <th>Date</th>
+                                <th>KAM</th>
+                                <th>Mail Subject</th>
+                                <th>Status</th>
+                                <th>Solved Date</th>
+                                <th>Resolution Gap</th>
+                            </tr>
+                        </thead>
+                        <tbody id="irMailTableBody">
+                            <tr><td colspan="7" class="empty-state">Loading IR mail data...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="flex items-center justify-between mt-4 pt-4 border-t border-slate-100">
+                    <span class="text-xs text-slate-400" id="irShowingText">Showing 0 of 0 mails</span>
+                    <div class="flex gap-2" id="irPagination"></div>
+                </div>
+            </div>
+
             <!-- ISSUES LOG SECTION -->
             <div class="card p-6">
                 <div class="section-title mb-5">Issues Log</div>
@@ -687,7 +891,7 @@
         </main>
     </div>
 
-    
+
     <!-- Admin Panel Modal -->
     <div id="adminModal" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl p-6 max-w-lg w-full shadow-2xl" style="max-height: 80vh; overflow-y: auto;">
@@ -825,6 +1029,7 @@
             }
 
             loadAllSheets();
+            loadIRMailData();
         }
 
         // ===================== CONFIG =====================
@@ -833,6 +1038,11 @@
             { name: 'Sheet 2', displayName: 'OSD', url: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSAVNwzXLfSVFu4psJlhz7pqMKtEocVNUKChUbpRaFoXVxSric-zuGESs7GyT0R6DO_sF76RE951c3B/pub?output=csv' },
             { name: 'Sheet 3', displayName: 'Central', url: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRsO79-0XIgKVkMKaIPjkBCp-npePr9WxH8LCX3jcPslWC4PlP4Qsa0qalr6FQuBZGmPsiLnkt2uv2S/pub?gid=0&single=true&output=csv' }
         ];
+
+        const IR_MAIL_SHEET = {
+            name: 'IR Mail',
+            url: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRlViGGma2_xDruRqM8Y77VWWiO7OwvylvZP9UTD30uGPMOyn8C5Ceo1DzlBhHTsRT5kzKo3GqFo6Vg/pub?output=csv'
+        };
 
         const KAM_MAP = {
             'ahmed.asif@carrybee.com': 'AHMED ASIF RASHID',
@@ -847,12 +1057,16 @@
         let allData = [];
         let teamData = [];
         let filteredData = [];
+        let irMailData = [];
+        let filteredIRData = [];
         let categoryChart = null;
         let dailyChart = null;
         let currentPeriod = '7d';
         let currentPill = 'all';
         let currentPage = 1;
+        let irCurrentPage = 1;
         const PAGE_SIZE = 50;
+        const IR_PAGE_SIZE = 50;
 
         // ===================== ROBUST DATE PARSER =====================
         function parseDateRobust(val) {
@@ -1096,6 +1310,277 @@
                 if (!a._date && b._date) return 1;
                 return 0;
             });
+        }
+
+        // ===================== IR MAIL DATA =====================
+        async function loadIRMailData() {
+            try {
+                const rows = await fetchCSV(IR_MAIL_SHEET.url);
+                if (rows.length === 0) {
+                    console.log('IR Mail sheet empty');
+                    renderIREmpty();
+                    return;
+                }
+
+                const headers = Object.keys(rows[0]);
+                const detected = detectIRColumns(headers, rows);
+
+                irMailData = rows.map((row, idx) => {
+                    const kamVal = row[detected.kam] || '';
+                    const kamName = normalizeKAM(kamVal);
+                    const dateVal = row[detected.date] || '';
+                    const subjectVal = row[detected.subject] || '';
+                    const statusVal = row[detected.status] || '';
+                    const solvedDateVal = row[detected.solvedDate] || '';
+                    const rawDate = parseDateRobust(dateVal);
+                    const rawSolvedDate = parseDateRobust(solvedDateVal);
+
+                    const solved = isIRMailSolved(statusVal);
+                    const gap = calculateResolutionGap(rawDate, rawSolvedDate, solved);
+
+                    return {
+                        _id: idx + 1,
+                        _kam: kamName,
+                        _date: rawDate,
+                        _dateRaw: dateVal,
+                        _subject: subjectVal ? String(subjectVal).trim() : '-',
+                        _status: solved ? 'Solved' : 'Pending',
+                        _solvedDate: rawSolvedDate,
+                        _solvedDateRaw: solvedDateVal,
+                        _gap: gap,
+                        _raw: row
+                    };
+                });
+
+                // Filter to target KAMs only
+                irMailData = irMailData.filter(d => TARGET_KAMS.includes(d._kam));
+                irMailData = sortByDateDesc(irMailData);
+                filteredIRData = [...irMailData];
+
+                renderIRDashboard();
+                renderIRTable();
+            } catch (e) {
+                console.error('Failed to load IR Mail data:', e);
+                renderIREmpty();
+            }
+        }
+
+        function detectIRColumns(headers, sampleRows) {
+            const h = headers.map(x => x.toLowerCase().trim());
+            const map = { kam: null, date: null, subject: null, status: null, solvedDate: null };
+
+            // KAM / Email
+            for (let i = 0; i < h.length; i++) {
+                if (h[i].includes('kam') || h[i].includes('email') || h[i].includes('assignee') || h[i].includes('agent') || h[i].includes('user')) {
+                    map.kam = headers[i]; break;
+                }
+            }
+            if (!map.kam) map.kam = headers[0];
+
+            // Date
+            for (let i = 0; i < h.length; i++) {
+                if (h[i].includes('date') || h[i].includes('created') || h[i].includes('time')) {
+                    map.date = headers[i]; break;
+                }
+            }
+            if (!map.date) map.date = headers.find(h => h.toLowerCase().includes('date')) || headers[1];
+
+            // Subject
+            for (let i = 0; i < h.length; i++) {
+                if (h[i].includes('subject') || h[i].includes('title') || h[i].includes('topic') || h[i].includes('mail') || h[i].includes('issue')) {
+                    map.subject = headers[i]; break;
+                }
+            }
+            if (!map.subject) {
+                // Find column with longest text values as fallback
+                let maxLen = 0;
+                for (let col of headers) {
+                    const avgLen = sampleRows.slice(0, 3).reduce((sum, r) => sum + String(r[col] || '').length, 0) / 3;
+                    if (avgLen > maxLen && avgLen > 20) {
+                        maxLen = avgLen;
+                        map.subject = col;
+                    }
+                }
+            }
+
+            // Status
+            for (let i = 0; i < h.length; i++) {
+                if (h[i].includes('status') || h[i].includes('state') || h[i].includes('solved')) {
+                    map.status = headers[i]; break;
+                }
+            }
+
+            // Solved Date
+            for (let i = 0; i < h.length; i++) {
+                if (h[i].includes('solved') && h[i].includes('date')) {
+                    map.solvedDate = headers[i]; break;
+                }
+            }
+            if (!map.solvedDate) {
+                for (let i = 0; i < h.length; i++) {
+                    if (h[i].includes('resolved') && h[i].includes('date')) {
+                        map.solvedDate = headers[i]; break;
+                    }
+                }
+            }
+
+            console.log('IR Mail detected columns:', map);
+            return map;
+        }
+
+        function isIRMailSolved(statusVal) {
+            if (!statusVal) return false;
+            const s = String(statusVal).toLowerCase();
+            return s.includes('solved') || s.includes('resolved') || s.includes('closed') || s.includes('done') || s.includes('complete');
+        }
+
+        function calculateResolutionGap(raisedDate, solvedDate, isSolved) {
+            if (!isSolved || !raisedDate || !solvedDate) return { text: '-', class: '' };
+
+            const diffMs = solvedDate - raisedDate;
+            const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+            const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+
+            if (diffHours < 24 && diffDays === 0) {
+                return { text: 'Same day', class: 'gap-same' };
+            }
+            if (diffDays === 1) {
+                return { text: '1d', class: 'gap-days' };
+            }
+            if (diffDays > 1 && diffDays <= 7) {
+                return { text: diffDays + 'd', class: 'gap-days' };
+            }
+            if (diffDays > 7) {
+                return { text: diffDays + 'd', class: 'gap-long' };
+            }
+            return { text: '-', class: '' };
+        }
+
+        function renderIRDashboard() {
+            const total = irMailData.length;
+            const solved = irMailData.filter(d => d._status === 'Solved').length;
+            const pending = total - solved;
+            const ratio = total > 0 ? Math.round((solved / total) * 100) : 0;
+
+            document.getElementById('irTotalRaised').textContent = total;
+            document.getElementById('irPending').textContent = pending;
+            document.getElementById('irSolved').textContent = solved;
+            document.getElementById('irSolveRatio').textContent = ratio + '%';
+
+            // Ahmed stats
+            const ahmedData = irMailData.filter(d => d._kam === 'AHMED ASIF RASHID');
+            const ahmedTotal = ahmedData.length;
+            const ahmedSolved = ahmedData.filter(d => d._status === 'Solved').length;
+            const ahmedPending = ahmedTotal - ahmedSolved;
+            const ahmedRatio = ahmedTotal > 0 ? Math.round((ahmedSolved / ahmedTotal) * 100) : 0;
+
+            document.getElementById('irAhmedRaised').textContent = ahmedTotal;
+            document.getElementById('irAhmedPending').textContent = ahmedPending;
+            document.getElementById('irAhmedSolved').textContent = ahmedSolved;
+            document.getElementById('irAhmedRatio').textContent = ahmedRatio + '%';
+            document.getElementById('irAhmedProgress').style.width = ahmedRatio + '%';
+
+            // Nahid stats
+            const nahidData = irMailData.filter(d => d._kam === 'NURUZZAMAN NAHID');
+            const nahidTotal = nahidData.length;
+            const nahidSolved = nahidData.filter(d => d._status === 'Solved').length;
+            const nahidPending = nahidTotal - nahidSolved;
+            const nahidRatio = nahidTotal > 0 ? Math.round((nahidSolved / nahidTotal) * 100) : 0;
+
+            document.getElementById('irNahidRaised').textContent = nahidTotal;
+            document.getElementById('irNahidPending').textContent = nahidPending;
+            document.getElementById('irNahidSolved').textContent = nahidSolved;
+            document.getElementById('irNahidRatio').textContent = nahidRatio + '%';
+            document.getElementById('irNahidProgress').style.width = nahidRatio + '%';
+        }
+
+        function renderIRTable() {
+            const tbody = document.getElementById('irMailTableBody');
+            const start = (irCurrentPage - 1) * IR_PAGE_SIZE;
+            const end = Math.min(start + IR_PAGE_SIZE, filteredIRData.length);
+            const pageData = filteredIRData.slice(start, end);
+
+            if (filteredIRData.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No IR mail data found.</td></tr>';
+                document.getElementById('irShowingText').textContent = 'Showing 0 of 0 mails';
+                document.getElementById('irPagination').innerHTML = '';
+                return;
+            }
+
+            const bodyHTML = pageData.map((d, idx) => {
+                const kamClass = d._kam === 'AHMED ASIF RASHID' ? 'kam-tag-ahmed' : 'kam-tag-nahid';
+                const kamInitials = d._kam === 'AHMED ASIF RASHID' ? 'AR' : 'NN';
+                const statusClass = d._status === 'Solved' ? 'status-badge-solved' : 'status-badge-pending';
+                const statusIcon = d._status === 'Solved' 
+                    ? '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>'
+                    : '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>';
+
+                const dateStr = d._date ? d._date.toLocaleString('en-US', { 
+                    weekday: 'short', month: 'short', day: 'numeric', year: 'numeric',
+                    hour: '2-digit', minute: '2-digit', second: '2-digit',
+                    timeZoneName: 'short'
+                }) : (d._dateRaw || '-');
+
+                const solvedStr = d._solvedDate ? d._solvedDate.toLocaleString('en-US', {
+                    weekday: 'short', month: 'short', day: 'numeric', year: 'numeric',
+                    hour: '2-digit', minute: '2-digit', second: '2-digit',
+                    timeZoneName: 'short'
+                }) : (d._solvedDateRaw && d._solvedDateRaw !== '-' ? d._solvedDateRaw : '-');
+
+                return `<tr>
+                    <td><span class="text-xs text-slate-400">${start + idx + 1}</span></td>
+                    <td><span class="text-xs text-slate-600 leading-relaxed">${dateStr}</span></td>
+                    <td><span class="kam-tag ${kamClass}"><span style="width:18px;height:18px;border-radius:50%;background:${d._kam === 'AHMED ASIF RASHID' ? '#3b82f6' : '#10b981'};color:white;font-size:10px;display:inline-flex;align-items:center;justify-content:center;font-weight:700;">${kamInitials}</span>${d._kam === 'AHMED ASIF RASHID' ? 'Ahmed Asif' : 'Nuruzzaman'}</span></td>
+                    <td><span class="text-xs text-slate-700 font-medium leading-relaxed">${d._subject}</span></td>
+                    <td><span class="${statusClass}">${statusIcon}${d._status}</span></td>
+                    <td><span class="text-xs text-slate-600">${solvedStr}</span></td>
+                    <td><span class="text-xs ${d._gap.class}">${d._gap.text}</span></td>
+                </tr>`;
+            }).join('');
+
+            tbody.innerHTML = bodyHTML;
+
+            document.getElementById('irShowingText').textContent = `Showing ${start + 1}-${end} of ${filteredIRData.length} mails`;
+
+            const totalPages = Math.ceil(filteredIRData.length / IR_PAGE_SIZE);
+            let pagHTML = '';
+            if (totalPages > 1) {
+                pagHTML += `<button onclick="changeIRPage(${irCurrentPage - 1})" ${irCurrentPage === 1 ? 'disabled' : ''} class="px-3 py-1 text-xs rounded-md border border-slate-200 ${irCurrentPage === 1 ? 'text-slate-300' : 'text-slate-600 hover:bg-slate-50'}">Prev</button>`;
+                for (let i = 1; i <= totalPages; i++) {
+                    if (i === 1 || i === totalPages || (i >= irCurrentPage - 1 && i <= irCurrentPage + 1)) {
+                        pagHTML += `<button onclick="changeIRPage(${i})" class="px-3 py-1 text-xs rounded-md ${i === irCurrentPage ? 'bg-blue-600 text-white' : 'border border-slate-200 text-slate-600 hover:bg-slate-50'}">${i}</button>`;
+                    } else if (i === irCurrentPage - 2 || i === irCurrentPage + 2) {
+                        pagHTML += `<span class="px-2 text-xs text-slate-400">...</span>`;
+                    }
+                }
+                pagHTML += `<button onclick="changeIRPage(${irCurrentPage + 1})" ${irCurrentPage === totalPages ? 'disabled' : ''} class="px-3 py-1 text-xs rounded-md border border-slate-200 ${irCurrentPage === totalPages ? 'text-slate-300' : 'text-slate-600 hover:bg-slate-50'}">Next</button>`;
+            }
+            document.getElementById('irPagination').innerHTML = pagHTML;
+        }
+
+        function changeIRPage(page) {
+            const totalPages = Math.ceil(filteredIRData.length / IR_PAGE_SIZE);
+            if (page < 1 || page > totalPages) return;
+            irCurrentPage = page;
+            renderIRTable();
+        }
+
+        function renderIREmpty() {
+            document.getElementById('irTotalRaised').textContent = '0';
+            document.getElementById('irPending').textContent = '0';
+            document.getElementById('irSolved').textContent = '0';
+            document.getElementById('irSolveRatio').textContent = '0%';
+            document.getElementById('irAhmedRaised').textContent = '0';
+            document.getElementById('irAhmedPending').textContent = '0';
+            document.getElementById('irAhmedSolved').textContent = '0';
+            document.getElementById('irAhmedRatio').textContent = '0%';
+            document.getElementById('irAhmedProgress').style.width = '0%';
+            document.getElementById('irNahidRaised').textContent = '0';
+            document.getElementById('irNahidPending').textContent = '0';
+            document.getElementById('irNahidSolved').textContent = '0';
+            document.getElementById('irNahidRatio').textContent = '0%';
+            document.getElementById('irNahidProgress').style.width = '0%';
+            document.getElementById('irMailTableBody').innerHTML = '<tr><td colspan="7" class="empty-state">No IR mail data available. Check sheet URL.</td></tr>';
         }
 
         // ===================== LOAD DATA =====================
@@ -1572,6 +2057,7 @@
 
         function refreshAll() {
             loadAllSheets();
+            loadIRMailData();
         }
 
         // ===================== DARK MODE TOGGLE =====================
@@ -1579,10 +2065,10 @@
             const html = document.documentElement;
             const toggle = document.getElementById('themeToggle');
             const isDark = html.classList.toggle('dark');
-            
+
             toggle.classList.toggle('dark', isDark);
             localStorage.setItem('carrybee-dark', isDark ? '1' : '0');
-            
+
             setTimeout(() => {
                 if (categoryChart) { categoryChart.destroy(); renderCategoryChart(); }
                 if (dailyChart) { dailyChart.destroy(); renderDailyChart(); }
@@ -1593,10 +2079,10 @@
             const saved = localStorage.getItem('carrybee-dark');
             const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
             const isDark = saved === null ? prefersDark : saved === '1';
-            
+
             const html = document.documentElement;
             const toggle = document.getElementById('themeToggle');
-            
+
             if (isDark) {
                 html.classList.add('dark');
                 toggle.classList.add('dark');
@@ -1688,8 +2174,12 @@
             const isBuiltIn = AUTH_USERS.some(b => b.username === username);
 
             let msg = `Remove user "${username}"?`;
-            if (isSelf) msg = `WARNING: You are removing yourself!\n\nRemove "${username}"? You will be logged out immediately.`;
-            if (isBuiltIn && !isSelf) msg = `WARNING: This is a built-in user.\n\nRemove "${username}"? They can be restored by reloading the page.`;
+            if (isSelf) msg = `WARNING: You are removing yourself!
+
+Remove "${username}"? You will be logged out immediately.`;
+            if (isBuiltIn && !isSelf) msg = `WARNING: This is a built-in user.
+
+Remove "${username}"? They can be restored by reloading the page.`;
 
             if (!confirm(msg)) return;
 
