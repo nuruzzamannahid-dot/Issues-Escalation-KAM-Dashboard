@@ -487,6 +487,10 @@
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
                         Logout
                     </button>
+                    <button id="adminBtn" onclick="openAdminPanel()" class="px-3 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 text-xs font-semibold rounded-lg transition-colors hidden flex items-center gap-1.5">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                        Manage Users
+                    </button>
                     
                     <!-- Dark Mode Toggle -->
                     <div class="theme-toggle" id="themeToggle" onclick="toggleDarkMode()" title="Toggle Dark Mode">
@@ -678,6 +682,47 @@
         </main>
     </div>
 
+    
+    <!-- Admin Panel Modal -->
+    <div id="adminModal" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl p-6 max-w-lg w-full shadow-2xl" style="max-height: 80vh; overflow-y: auto;">
+            <h3 class="text-lg font-bold text-slate-800 mb-1">User Management</h3>
+            <p class="text-sm text-slate-500 mb-5">Add or remove authorized users. Only admins can access this panel.</p>
+
+            <div class="bg-slate-50 rounded-xl p-4 mb-5">
+                <h4 class="text-xs font-bold text-slate-600 uppercase tracking-wider mb-3">Add New User</h4>
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Username</label>
+                        <input type="text" id="newUserName" class="auth-input" placeholder="e.g. john" autocomplete="off">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Password</label>
+                        <input type="text" id="newUserPass" class="auth-input" placeholder="Enter password" autocomplete="off">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Role</label>
+                        <select id="newUserRole" class="dropdown-select w-full">
+                            <option value="user">User</option>
+                            <option value="admin">Admin</option>
+                        </select>
+                    </div>
+                    <button onclick="addNewUser()" class="auth-btn">Add User</button>
+                    <div id="adminError" class="auth-error" style="display:none"></div>
+                </div>
+            </div>
+
+            <div>
+                <h4 class="text-xs font-bold text-slate-600 uppercase tracking-wider mb-3">Active Users</h4>
+                <div id="usersList" class="space-y-2"></div>
+            </div>
+
+            <div class="flex justify-end gap-3 mt-6 pt-4 border-t border-slate-100">
+                <button onclick="closeAdminPanel()" class="px-4 py-2 text-sm text-slate-500 hover:text-slate-800 font-medium transition-colors">Close</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Settings Modal -->
     <div id="settingsModal" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl p-6 max-w-lg w-full shadow-2xl">
@@ -694,12 +739,35 @@
     <script>
         // ===================== AUTH CONFIG =====================
         const AUTH_USERS = [
-            { username: 'admin', password: 'carrybee2024' },
-            { username: 'ahmed', password: 'ahmed86026' },
-            { username: 'nahid', password: 'nahid84175' }
+            { username: 'admin', password: 'carrybee2024', role: 'admin' },
+            { username: 'nahid', password: 'nahid84175', role: 'admin' },
+            { username: 'ahmed', password: 'ahmed86026', role: 'user' },
+            { username: 'muktadir', password: 'muktadir86003', role: 'user' }
         ];
         const AUTH_SESSION_KEY = 'carrybee_auth';
         const AUTH_REMEMBER_KEY = 'carrybee_auth_remember';
+        const AUTH_DYNAMIC_USERS_KEY = 'carrybee_dynamic_users';
+
+        function getAllUsers() {
+            const dynamic = JSON.parse(localStorage.getItem(AUTH_DYNAMIC_USERS_KEY) || '[]');
+            return [...AUTH_USERS, ...dynamic];
+        }
+
+        function getCurrentUser() {
+            const session = sessionStorage.getItem(AUTH_SESSION_KEY);
+            const remember = localStorage.getItem(AUTH_REMEMBER_KEY);
+            if (!session && !remember) return null;
+            try {
+                return JSON.parse(session || remember);
+            } catch (e) {
+                return null;
+            }
+        }
+
+        function isAdmin() {
+            const user = getCurrentUser();
+            return user && user.role === 'admin';
+        }
 
         function checkAuth() {
             const session = sessionStorage.getItem(AUTH_SESSION_KEY);
@@ -717,8 +785,9 @@
             const remember = document.getElementById('authRemember').checked;
             const errorEl = document.getElementById('authError');
 
-            const valid = AUTH_USERS.some(u => u.username === user && u.password === pass);
-            if (!valid) {
+            const allUsers = getAllUsers();
+            const matched = allUsers.find(u => u.username === user && u.password === pass);
+            if (!matched) {
                 errorEl.style.display = 'block';
                 document.getElementById('authPass').value = '';
                 document.getElementById('authPass').focus();
@@ -726,9 +795,10 @@
             }
 
             errorEl.style.display = 'none';
-            sessionStorage.setItem(AUTH_SESSION_KEY, '1');
+            const userData = JSON.stringify({ username: matched.username, role: matched.role });
+            sessionStorage.setItem(AUTH_SESSION_KEY, userData);
             if (remember) {
-                localStorage.setItem(AUTH_REMEMBER_KEY, '1');
+                localStorage.setItem(AUTH_REMEMBER_KEY, userData);
             }
             showApp();
         }
@@ -742,6 +812,13 @@
         function showApp() {
             document.getElementById('authOverlay').style.display = 'none';
             document.getElementById('appContent').style.display = 'block';
+
+            // Show admin button for admins
+            const adminBtn = document.getElementById('adminBtn');
+            if (adminBtn) {
+                adminBtn.classList.toggle('hidden', !isAdmin());
+            }
+
             loadAllSheets();
         }
 
@@ -1522,6 +1599,97 @@
                 html.classList.remove('dark');
                 toggle.classList.remove('dark');
             }
+        }
+
+        // ===================== ADMIN PANEL =====================
+        function openAdminPanel() {
+            if (!isAdmin()) {
+                alert('Only admins can access user management.');
+                return;
+            }
+            renderUsersList();
+            document.getElementById('adminModal').classList.remove('hidden');
+            document.getElementById('adminError').style.display = 'none';
+        }
+
+        function closeAdminPanel() {
+            document.getElementById('adminModal').classList.add('hidden');
+        }
+
+        function renderUsersList() {
+            const list = document.getElementById('usersList');
+            const allUsers = getAllUsers();
+            const current = getCurrentUser();
+
+            list.innerHTML = allUsers.map(u => {
+                const isBuiltIn = AUTH_USERS.some(b => b.username === u.username);
+                const isSelf = current && current.username === u.username;
+                const canDelete = !isBuiltIn && !isSelf;
+                const roleBadge = u.role === 'admin' 
+                    ? '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-700">ADMIN</span>'
+                    : '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-600">USER</span>';
+
+                return `<div class="flex items-center justify-between p-3 rounded-lg border border-slate-200 ${isBuiltIn ? 'bg-slate-50' : 'bg-white'}">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold">${u.username.substring(0,2).toUpperCase()}</div>
+                        <div>
+                            <div class="text-sm font-semibold text-slate-700">${u.username}</div>
+                            <div class="flex items-center gap-2 mt-0.5">${roleBadge}${isBuiltIn ? '<span class="text-[10px] text-slate-400">Built-in</span>' : ''}${isSelf ? '<span class="text-[10px] text-blue-500">You</span>' : ''}</div>
+                        </div>
+                    </div>
+                    ${canDelete ? `<button onclick="removeUser('${u.username}')" class="px-2 py-1 text-xs text-rose-600 hover:bg-rose-50 rounded-md transition-colors font-medium">Remove</button>` : '<span class="text-xs text-slate-300">Locked</span>'}
+                </div>`;
+            }).join('');
+        }
+
+        function addNewUser() {
+            const username = document.getElementById('newUserName').value.trim().toLowerCase();
+            const password = document.getElementById('newUserPass').value.trim();
+            const role = document.getElementById('newUserRole').value;
+            const errorEl = document.getElementById('adminError');
+
+            if (!username || !password) {
+                errorEl.textContent = 'Username and password are required.';
+                errorEl.style.display = 'block';
+                return;
+            }
+            if (username.length < 3 || password.length < 4) {
+                errorEl.textContent = 'Username min 3 chars, password min 4 chars.';
+                errorEl.style.display = 'block';
+                return;
+            }
+
+            const allUsers = getAllUsers();
+            if (allUsers.some(u => u.username === username)) {
+                errorEl.textContent = 'Username already exists.';
+                errorEl.style.display = 'block';
+                return;
+            }
+
+            const dynamic = JSON.parse(localStorage.getItem(AUTH_DYNAMIC_USERS_KEY) || '[]');
+            dynamic.push({ username, password, role });
+            localStorage.setItem(AUTH_DYNAMIC_USERS_KEY, JSON.stringify(dynamic));
+
+            errorEl.style.display = 'none';
+            document.getElementById('newUserName').value = '';
+            document.getElementById('newUserPass').value = '';
+            document.getElementById('newUserRole').value = 'user';
+            renderUsersList();
+        }
+
+        function removeUser(username) {
+            if (!isAdmin()) return;
+            const current = getCurrentUser();
+            if (current && current.username === username) {
+                alert('You cannot remove yourself.');
+                return;
+            }
+            if (!confirm(`Remove user "${username}"? This cannot be undone.`)) return;
+
+            let dynamic = JSON.parse(localStorage.getItem(AUTH_DYNAMIC_USERS_KEY) || '[]');
+            dynamic = dynamic.filter(u => u.username !== username);
+            localStorage.setItem(AUTH_DYNAMIC_USERS_KEY, JSON.stringify(dynamic));
+            renderUsersList();
         }
 
         // ===================== INIT =====================
