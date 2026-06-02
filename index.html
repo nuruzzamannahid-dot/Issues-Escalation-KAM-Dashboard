@@ -191,6 +191,99 @@
         .debug-bar span { margin-right: 12px; }
         .debug-bar .ok { color: #059669; }
         .debug-bar .err { color: #dc2626; }
+
+        /* Dark Mode Variables */
+        :root {
+            --bg-body: #f0f4f8;
+            --bg-card: #ffffff;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-muted: #94a3b8;
+            --border-color: #e2e8f0;
+            --input-bg: #f1f5f9;
+            --hover-bg: #f8fafc;
+            --badge-bg: #f1f5f9;
+            --stat-bg: #f8fafc;
+            --urgent-bg: linear-gradient(90deg, #fef3c7, #fffbeb);
+            --urgent-border: #fde68a;
+            --urgent-text: #b45309;
+            --table-header-bg: #fafbfc;
+            --table-row-hover: #f8fafc;
+            --debug-bg: #f8fafc;
+            --tab-active-bg: #eff6ff;
+            --tab-active-text: #3b82f6;
+            --tab-active-border: #bfdbfe;
+            --filter-active-bg: #ecfdf5;
+            --filter-active-text: #059669;
+            --filter-active-border: #a7f3d0;
+            --today-bg: #ecfdf5;
+            --today-text: #059669;
+            --today-border: #a7f3d0;
+            --modal-overlay: rgba(0,0,0,0.4);
+        }
+
+        html.dark {
+            --bg-body: #0f172a;
+            --bg-card: #1e293b;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --border-color: #334155;
+            --input-bg: #334155;
+            --hover-bg: #334155;
+            --badge-bg: #334155;
+            --stat-bg: #1e293b;
+            --urgent-bg: linear-gradient(90deg, #451a03, #78350f);
+            --urgent-border: #92400e;
+            --urgent-text: #fbbf24;
+            --table-header-bg: #1e293b;
+            --table-row-hover: #334155;
+            --debug-bg: #1e293b;
+            --tab-active-bg: #1e3a5f;
+            --tab-active-text: #60a5fa;
+            --tab-active-border: #3b82f6;
+            --filter-active-bg: #064e3b;
+            --filter-active-text: #34d399;
+            --filter-active-border: #059669;
+            --today-bg: #064e3b;
+            --today-text: #34d399;
+            --today-border: #059669;
+            --modal-overlay: rgba(0,0,0,0.7);
+        }
+
+        body { background: var(--bg-body); transition: background 0.3s ease; }
+        .card { background: var(--bg-card); transition: background 0.3s ease, border-color 0.3s ease; }
+        .summary-card { border-top: 4px solid; }
+        .text-slate-800 { color: var(--text-primary) !important; }
+        .text-slate-700 { color: var(--text-primary) !important; }
+        .text-slate-600 { color: var(--text-secondary) !important; }
+        .text-slate-500 { color: var(--text-muted) !important; }
+        .text-slate-400 { color: var(--text-muted) !important; }
+        .text-slate-300 { color: var(--text-muted) !important; }
+        .border-slate-200 { border-color: var(--border-color) !important; }
+        .border-slate-100 { border-color: var(--border-color) !important; }
+        .bg-slate-100 { background: var(--input-bg) !important; }
+        .bg-slate-50 { background: var(--input-bg) !important; }
+        .bg-white { background: var(--bg-card) !important; }
+        .hover\:bg-slate-50:hover { background: var(--hover-bg) !important; }
+        .hover\:bg-slate-200:hover { background: var(--hover-bg) !important; }
+        .search-input { background: var(--input-bg); border-color: var(--border-color); color: var(--text-secondary); }
+        .search-input:focus { background: var(--bg-card); }
+        .dropdown-select { background: var(--bg-card); border-color: var(--border-color); color: var(--text-secondary); }
+        .filter-pill { background: var(--bg-card); border-color: var(--border-color); color: var(--text-muted); }
+        .filter-pill.active { background: var(--filter-active-bg); color: var(--filter-active-text); border-color: var(--filter-active-border); }
+        .tab-btn { background: var(--bg-card); border-color: var(--border-color); color: var(--text-muted); }
+        .tab-btn.active { background: var(--tab-active-bg); color: var(--tab-active-text); border-color: var(--tab-active-border); }
+        .stat-box { background: var(--stat-bg); }
+        .category-pill { background: var(--badge-bg); border-color: var(--border-color); color: var(--text-secondary); }
+        .urgent-bar { background: var(--urgent-bg); border-color: var(--urgent-border); color: var(--urgent-text); }
+        .issues-table th { background: var(--table-header-bg); border-bottom-color: var(--border-color); color: var(--text-muted); }
+        .issues-table td { border-bottom-color: var(--border-color); color: var(--text-secondary); }
+        .issues-table tr:hover td { background: var(--table-row-hover); }
+        .debug-bar { background: var(--debug-bg); border-color: var(--border-color); }
+        .today-badge { background: var(--today-bg); color: var(--today-text); border-color: var(--today-border); }
+        .empty-state { color: var(--text-muted); }
+        #settingsModal > div:first-child { background: var(--modal-overlay); }
     </style>
 <base target="_blank">
 </head>
@@ -216,6 +309,23 @@
                 <button onclick="openSettings()" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-semibold rounded-lg transition-colors">
                     ⚙️ Settings
                 </button>
+                <div class="relative">
+                    <button id="themeToggle" onclick="toggleThemeDropdown()" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-semibold rounded-lg transition-colors flex items-center gap-2">
+                        <span id="themeIcon">🌙</span>
+                        <span id="themeLabel">Dark</span>
+                    </button>
+                    <div id="themeDropdown" class="hidden absolute right-0 mt-2 w-40 bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 z-50 overflow-hidden">
+                        <button onclick="setTheme('light')" class="w-full px-4 py-2.5 text-left text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-2 transition-colors">
+                            <span>☀️</span> Light Mode
+                        </button>
+                        <button onclick="setTheme('dark')" class="w-full px-4 py-2.5 text-left text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-2 transition-colors">
+                            <span>🌙</span> Dark Mode
+                        </button>
+                        <button onclick="setTheme('system')" class="w-full px-4 py-2.5 text-left text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-2 transition-colors border-t border-slate-100 dark:border-slate-700">
+                            <span>💻</span> System
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
         <div class="max-w-7xl mx-auto mt-2">
@@ -903,6 +1013,7 @@
 
         // ===================== CHARTS =====================
         function renderCategoryChart() {
+            const isDark = document.documentElement.classList.contains('dark');
             const catCounts = {};
             teamData.forEach(d => {
                 const cat = d._category || 'Uncategorized';
@@ -918,10 +1029,10 @@
                 data: { labels, datasets: [{ label: 'Issues', data: values, backgroundColor: colors.slice(0, labels.length), borderRadius: 8, borderSkipped: false, barThickness: 60 }] },
                 options: {
                     responsive: true, maintainAspectRatio: false,
-                    plugins: { legend: { position: 'top', labels: { usePointStyle: true, pointStyle: 'circle', padding: 20, font: { size: 12, family: 'Inter' } } } },
+                    plugins: { legend: { position: 'top', labels: { usePointStyle: true, pointStyle: 'circle', padding: 20, font: { size: 12, family: 'Inter' }, color: isDark ? '#94a3b8' : '#64748b' } } },
                     scales: {
-                        y: { beginAtZero: true, grid: { color: '#f1f5f9', drawBorder: false }, ticks: { color: '#94a3b8', font: { size: 12, family: 'Inter' } } },
-                        x: { grid: { display: false }, ticks: { color: '#64748b', font: { size: 12, family: 'Inter' } } }
+                        y: { beginAtZero: true, grid: { color: isDark ? '#334155' : '#f1f5f9', drawBorder: false }, ticks: { color: isDark ? '#94a3b8' : '#94a3b8', font: { size: 12, family: 'Inter' } } },
+                        x: { grid: { display: false }, ticks: { color: isDark ? '#94a3b8' : '#64748b', font: { size: 12, family: 'Inter' } } }
                     }
                 }
             });
@@ -947,6 +1058,7 @@
             document.getElementById('todayCount').textContent = `TODAY: ${teamData.filter(x => x._date && x._date >= today).length}`;
 
             if (dailyChart) dailyChart.destroy();
+            const isDark = document.documentElement.classList.contains('dark');
             const datasets = currentPeriod === 'member'
                 ? [
                     { label: 'Ahmed Asif Rashid', data: ahmedPoints, borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.1)', tension: 0.4, fill: true, pointRadius: 4, pointBackgroundColor: '#3b82f6' },
@@ -959,10 +1071,10 @@
                 data: { labels, datasets },
                 options: {
                     responsive: true, maintainAspectRatio: false,
-                    plugins: { legend: { position: 'top', align: 'start', labels: { usePointStyle: true, pointStyle: 'circle', padding: 20, font: { size: 12, family: 'Inter' } } } },
+                    plugins: { legend: { position: 'top', align: 'start', labels: { usePointStyle: true, pointStyle: 'circle', padding: 20, font: { size: 12, family: 'Inter' }, color: isDark ? '#94a3b8' : '#64748b' } } },
                     scales: {
-                        y: { beginAtZero: true, grid: { color: '#f1f5f9', drawBorder: false }, ticks: { color: '#94a3b8', font: { size: 12, family: 'Inter' }, stepSize: 1 } },
-                        x: { grid: { display: false }, ticks: { color: '#64748b', font: { size: 11, family: 'Inter' } } }
+                        y: { beginAtZero: true, grid: { color: isDark ? '#334155' : '#f1f5f9', drawBorder: false }, ticks: { color: isDark ? '#94a3b8' : '#94a3b8', font: { size: 12, family: 'Inter' }, stepSize: 1 } },
+                        x: { grid: { display: false }, ticks: { color: isDark ? '#94a3b8' : '#64748b', font: { size: 11, family: 'Inter' } } }
                     }
                 }
             });
@@ -1197,7 +1309,69 @@
             loadAllSheets();
         }
 
+        // ===================== THEME / DARK MODE =====================
+        function toggleThemeDropdown() {
+            const dd = document.getElementById('themeDropdown');
+            dd.classList.toggle('hidden');
+        }
+
+        function setTheme(mode) {
+            const html = document.documentElement;
+            const icon = document.getElementById('themeIcon');
+            const label = document.getElementById('themeLabel');
+
+            if (mode === 'system') {
+                const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                if (prefersDark) {
+                    html.classList.add('dark');
+                    icon.textContent = '🌙';
+                    label.textContent = 'Dark';
+                } else {
+                    html.classList.remove('dark');
+                    icon.textContent = '☀️';
+                    label.textContent = 'Light';
+                }
+            } else if (mode === 'dark') {
+                html.classList.add('dark');
+                icon.textContent = '🌙';
+                label.textContent = 'Dark';
+            } else {
+                html.classList.remove('dark');
+                icon.textContent = '☀️';
+                label.textContent = 'Light';
+            }
+
+            localStorage.setItem('carrybee-theme', mode);
+            document.getElementById('themeDropdown').classList.add('hidden');
+
+            // Re-render charts to update colors
+            if (categoryChart) { categoryChart.destroy(); renderCategoryChart(); }
+            if (dailyChart) { dailyChart.destroy(); renderDailyChart(); }
+        }
+
+        function initTheme() {
+            const saved = localStorage.getItem('carrybee-theme') || 'system';
+            setTheme(saved);
+        }
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+            const toggle = document.getElementById('themeToggle');
+            const dropdown = document.getElementById('themeDropdown');
+            if (toggle && dropdown && !toggle.contains(e.target) && !dropdown.contains(e.target)) {
+                dropdown.classList.add('hidden');
+            }
+        });
+
+        // Listen for system theme changes
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+            if (localStorage.getItem('carrybee-theme') === 'system') {
+                setTheme('system');
+            }
+        });
+
         setInterval(refreshAll, 300000);
+        initTheme();
         loadAllSheets();
     </script>
 </body>
