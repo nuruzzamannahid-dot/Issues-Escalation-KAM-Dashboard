@@ -868,7 +868,6 @@
                     <button class="filter-pill active" id="pill-all" onclick="setPillFilter('all')">All</button>
                     <button class="filter-pill" id="pill-ahmed" onclick="setPillFilter('ahmed')">Ahmed Asif Rashid</button>
                     <button class="filter-pill" id="pill-nahid" onclick="setPillFilter('nahid')">Nuruzzaman Nahid</button>
-                    <button class="filter-pill" id="pill-ir" onclick="setPillFilter('ir')">IR mails only</button>
                 </div>
 
                 <!-- Table -->
@@ -1364,6 +1363,8 @@
 
                 renderIRDashboard();
                 renderIRTable();
+                // Re-render main dashboard so IR MAILS summary card reflects IR sheet data
+                if (teamData.length > 0) renderDashboard();
             } catch (e) {
                 console.error('Failed to load IR Mail data:', e);
                 renderIREmpty();
@@ -1745,7 +1746,8 @@
             const total = teamData.length;
             const solved = teamData.filter(d => d._solved).length;
             const ratio = total > 0 ? Math.round((solved / total) * 100) : 0;
-            const irMails = teamData.filter(d => d._irMail).length;
+            // Use IR Mail sheet data if loaded, otherwise fall back to main sheet IR flag
+            const irMails = irMailData.length > 0 ? irMailData.length : teamData.filter(d => d._irMail).length;
             const urgent = teamData.filter(d => d._urgent).length;
 
             document.getElementById('summaryCards').innerHTML = `
@@ -1781,7 +1783,11 @@
             const total = data.length;
             const solved = data.filter(d => d._solved).length;
             const pending = total - solved;
-            const ir = data.filter(d => d._irMail).length;
+            // Use IR Mail sheet per-KAM count if available, otherwise fall back to main sheet IR flag
+            const kamName = prefix === 'ahmed' ? 'AHMED ASIF RASHID' : 'NURUZZAMAN NAHID';
+            const ir = irMailData.length > 0
+                ? irMailData.filter(d => d._kam === kamName).length
+                : data.filter(d => d._irMail).length;
             const ratio = total > 0 ? Math.round((solved / total) * 100) : 0;
             const urgent = data.filter(d => d._urgent).length;
 
@@ -1902,7 +1908,6 @@
 
             if (currentPill === 'ahmed') data = data.filter(d => d._kam === 'AHMED ASIF RASHID');
             else if (currentPill === 'nahid') data = data.filter(d => d._kam === 'NURUZZAMAN NAHID');
-            else if (currentPill === 'ir') data = data.filter(d => d._irMail);
 
             if (search) {
                 data = data.filter(d => {
