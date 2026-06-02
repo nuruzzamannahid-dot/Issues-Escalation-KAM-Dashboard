@@ -151,7 +151,6 @@
             font-size: 11px;
             font-weight: 600;
         }
-        /* .ops-picked removed - OPS comment marks as solved */
         .ops-solved { background: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }
         .ops-other { background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }
         .empty-state {
@@ -192,6 +191,45 @@
         .debug-bar .ok { color: #059669; }
         .debug-bar .err { color: #dc2626; }
 
+        /* ===== DARK MODE TOGGLE SWITCH ===== */
+        .theme-toggle {
+            position: relative;
+            width: 52px;
+            height: 28px;
+            border-radius: 14px;
+            background: #e2e8f0;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid #cbd5e1;
+            display: flex;
+            align-items: center;
+            padding: 2px;
+        }
+        .theme-toggle.dark {
+            background: #334155;
+            border-color: #475569;
+        }
+        .theme-toggle .toggle-knob {
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+            font-size: 12px;
+        }
+        .theme-toggle.dark .toggle-knob {
+            transform: translateX(24px);
+            background: #1e293b;
+        }
+        .theme-toggle .sun-icon { display: block; }
+        .theme-toggle .moon-icon { display: none; }
+        .theme-toggle.dark .sun-icon { display: none; }
+        .theme-toggle.dark .moon-icon { display: block; }
+
         /* Dark Mode Variables */
         :root {
             --bg-body: #f0f4f8;
@@ -220,6 +258,11 @@
             --today-text: #059669;
             --today-border: #a7f3d0;
             --modal-overlay: rgba(0,0,0,0.4);
+            --header-bg: #ffffff;
+            --header-border: #e2e8f0;
+            --toggle-bg: #e2e8f0;
+            --toggle-border: #cbd5e1;
+            --toggle-knob: #ffffff;
         }
 
         html.dark {
@@ -249,6 +292,11 @@
             --today-text: #34d399;
             --today-border: #059669;
             --modal-overlay: rgba(0,0,0,0.7);
+            --header-bg: #1e293b;
+            --header-border: #334155;
+            --toggle-bg: #334155;
+            --toggle-border: #475569;
+            --toggle-knob: #1e293b;
         }
 
         body { background: var(--bg-body); transition: background 0.3s ease; }
@@ -283,7 +331,10 @@
         .debug-bar { background: var(--debug-bg); border-color: var(--border-color); }
         .today-badge { background: var(--today-bg); color: var(--today-text); border-color: var(--today-border); }
         .empty-state { color: var(--text-muted); }
+        header { background: var(--header-bg) !important; border-color: var(--header-border) !important; transition: background 0.3s ease, border-color 0.3s ease; }
         #settingsModal > div:first-child { background: var(--modal-overlay); }
+        .theme-toggle { background: var(--toggle-bg); border-color: var(--toggle-border); }
+        .theme-toggle .toggle-knob { background: var(--toggle-knob); }
     </style>
 <base target="_blank">
 </head>
@@ -309,21 +360,12 @@
                 <button onclick="openSettings()" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-semibold rounded-lg transition-colors">
                     ⚙️ Settings
                 </button>
-                <div class="relative">
-                    <button id="themeToggle" onclick="toggleThemeDropdown()" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-semibold rounded-lg transition-colors flex items-center gap-2">
-                        <span id="themeIcon">🌙</span>
-                        <span id="themeLabel">Dark</span>
-                    </button>
-                    <div id="themeDropdown" class="hidden absolute right-0 mt-2 w-40 bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 z-50 overflow-hidden">
-                        <button onclick="setTheme('light')" class="w-full px-4 py-2.5 text-left text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-2 transition-colors">
-                            <span>☀️</span> Light Mode
-                        </button>
-                        <button onclick="setTheme('dark')" class="w-full px-4 py-2.5 text-left text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-2 transition-colors">
-                            <span>🌙</span> Dark Mode
-                        </button>
-                        <button onclick="setTheme('system')" class="w-full px-4 py-2.5 text-left text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-2 transition-colors border-t border-slate-100 dark:border-slate-700">
-                            <span>💻</span> System
-                        </button>
+                
+                <!-- Dark Mode Toggle -->
+                <div class="theme-toggle" id="themeToggle" onclick="toggleDarkMode()" title="Toggle Dark Mode">
+                    <div class="toggle-knob">
+                        <span class="sun-icon">☀️</span>
+                        <span class="moon-icon">🌙</span>
                     </div>
                 </div>
             </div>
@@ -630,7 +672,6 @@
             const h = headers.map(x => x.toLowerCase().trim());
             const map = { kam: null, status: null, category: null, date: null, irMail: null, consignment: null, details: null, opsReply: null, opsReplyCols: [] };
 
-            // --- KAM ---
             for (let i = 0; i < h.length; i++) {
                 const col = h[i];
                 if (col.includes('email') || col.includes('kam') || col.includes('assignee') || col.includes('owner') || col.includes('agent') || col.includes('user')) {
@@ -646,7 +687,6 @@
                 }
             }
 
-            // --- STATUS (detect first, exclude from category) ---
             for (let i = 0; i < h.length; i++) {
                 const col = h[i];
                 if (col.includes('status') || col.includes('state') || col.includes('solve') || col.includes('resolved') || col.includes('closed')) {
@@ -654,23 +694,17 @@
                 }
             }
 
-            // --- CATEGORY (must NOT be the same as status column) ---
-            // Priority 1: exact/partial match for category keywords, excluding sub-category
             const catKeywords = ['category', 'type', 'subject', 'topic', 'reason', 'nature', 'area', 'department', 'group', 'issue'];
             const catAvoid = ['status', 'state', 'solve', 'resolved', 'closed', 'email', 'kam', 'assignee', 'date', 'time', 'timestamp', 'id', 'consignment', 'cn', 'tracking', 'note', 'comment', 'reply', 'ops'];
 
-            // First pass: prefer columns with "category" but NOT "sub" (main category over sub-category)
             for (let i = 0; i < h.length; i++) {
                 if (headers[i] === map.status) continue;
                 const col = h[i];
-                const isCat = catKeywords.some(k => col.includes(k));
-                const isAvoid = catAvoid.some(k => col.includes(k));
                 const isMainCat = col.includes('category') && !col.includes('sub');
-                if (isMainCat && !isAvoid) {
+                if (isMainCat) {
                     map.category = headers[i]; break;
                 }
             }
-            // Second pass: any category keyword match
             if (!map.category) {
                 for (let i = 0; i < h.length; i++) {
                     if (headers[i] === map.status) continue;
@@ -682,7 +716,6 @@
                     }
                 }
             }
-            // Fallback: try 'issue'/'problem'/'complaint' with validation
             if (!map.category) {
                 for (let i = 0; i < h.length; i++) {
                     if (headers[i] === map.status) continue;
@@ -697,7 +730,6 @@
                 }
             }
 
-            // --- DATE ---
             for (let i = 0; i < h.length; i++) {
                 const col = h[i];
                 if (col.includes('date') || col.includes('created') || col.includes('time') || col.includes('timestamp')) {
@@ -705,7 +737,6 @@
                 }
             }
 
-            // --- IR MAIL ---
             for (let i = 0; i < h.length; i++) {
                 const col = h[i];
                 if (col.includes('ir') || col.includes('mail') || col.includes('email_sent') || col.includes('notification')) {
@@ -713,7 +744,6 @@
                 }
             }
 
-            // --- CONSIGNMENT ---
             for (let i = 0; i < h.length; i++) {
                 const col = h[i];
                 if (col.includes('consignment') || col.includes('id') || col.includes('cn') || col.includes('tracking') || col.includes('number') || col.includes('code')) {
@@ -721,15 +751,12 @@
                 }
             }
 
-            // --- DETAILS ---
-            // Priority 1: exact "issue details" or "details"
             for (let i = 0; i < h.length; i++) {
                 const col = h[i];
                 if (col === 'issue details' || col.includes('issue detail') || col === 'details' || col.includes('details')) {
                     map.details = headers[i]; break;
                 }
             }
-            // Priority 2: description/desc/remarks (NOT comment columns)
             if (!map.details) {
                 for (let i = 0; i < h.length; i++) {
                     const col = h[i];
@@ -739,15 +766,12 @@
                 }
             }
 
-            // --- OPS COMMENT COLUMNS ---
-            // Detect "Comments 1 (Ops End)" and "Comments 2 (Ops End)" specifically
             for (let i = 0; i < h.length; i++) {
                 const col = h[i];
                 if (col.includes('comment') || col.includes('reply') || col.includes('ops') || col.includes('pick') || col.includes('age') || col.includes('response') || col.includes('action') || col.includes('note')) {
                     map.opsReplyCols.push(headers[i]);
                 }
             }
-            // Sort to try to get Comments 1 before Comments 2
             map.opsReplyCols.sort((a, b) => {
                 const aLower = a.toLowerCase();
                 const bLower = b.toLowerCase();
@@ -770,12 +794,10 @@
             const hasComment2 = comment2 && String(comment2).trim().length > 0 && String(comment2).trim() !== '-';
             const hasAnyComment = hasComment1 || hasComment2;
 
-            // If status explicitly says solved
             if (status) {
                 const s = String(status).toLowerCase();
                 if (s.includes('solved') || s.includes('resolved') || s.includes('closed') || s.includes('done') || s.includes('complete')) return true;
             }
-            // If OPS has commented in Comments 1 or Comments 2, mark as solved
             if (hasAnyComment) return true;
             return false;
         }
@@ -800,12 +822,10 @@
         function getOpsReplyStatus(val, isSolvedFlag) {
             if (!val) return { text: '-', class: 'ops-other' };
             const text = String(val).trim();
-            // If issue is solved (either by status or by OPS comment), show as solved badge
             if (isSolvedFlag) return { text: text, class: 'ops-solved' };
             return { text: text, class: 'ops-other' };
         }
 
-        // ===================== SORT BY DATE DESCENDING =====================
         function sortByDateDesc(data) {
             return data.sort((a, b) => {
                 if (a._date && b._date) return b._date - a._date;
@@ -838,11 +858,10 @@
                     const headers = Object.keys(rows[0]);
                     const detected = detectColumns(headers, rows);
 
-                    // Use per-sheet detection, NOT global COL_MAP, to avoid cross-sheet poisoning
                     const sheetColMap = {
                         kam: detected.kam || COL_MAP.kam,
                         status: detected.status || COL_MAP.status,
-                        category: detected.category, // per-sheet only, never global
+                        category: detected.category,
                         date: detected.date || COL_MAP.date,
                         irMail: detected.irMail || COL_MAP.irMail,
                         consignment: detected.consignment || COL_MAP.consignment,
@@ -873,17 +892,15 @@
                         const categoryVal = row[sheetColMap.category || ''];
                         const dateVal = row[sheetColMap.date || ''];
                         const irVal = sheetColMap.irMail ? row[sheetColMap.irMail] : '';
-                        // Capture both comment columns separately
-                    const comment1Val = sheetColMap.comment1 ? (row[sheetColMap.comment1] || '') : '';
-                    const comment2Val = sheetColMap.comment2 ? (row[sheetColMap.comment2] || '') : '';
-                    const opsVal = String(comment1Val).trim() || String(comment2Val).trim();
+                        const comment1Val = sheetColMap.comment1 ? (row[sheetColMap.comment1] || '') : '';
+                        const comment2Val = sheetColMap.comment2 ? (row[sheetColMap.comment2] || '') : '';
+                        const opsVal = String(comment1Val).trim() || String(comment2Val).trim();
 
-                    // Accumulate ops reply columns globally for Settings modal
-                    if (detected.opsReplyCols && detected.opsReplyCols.length) {
-                        const existing = new Set(COL_MAP.opsReplyCols || []);
-                        detected.opsReplyCols.forEach(c => existing.add(c));
-                        COL_MAP.opsReplyCols = Array.from(existing);
-                    }
+                        if (detected.opsReplyCols && detected.opsReplyCols.length) {
+                            const existing = new Set(COL_MAP.opsReplyCols || []);
+                            detected.opsReplyCols.forEach(c => existing.add(c));
+                            COL_MAP.opsReplyCols = Array.from(existing);
+                        }
 
                         allData.push({
                             _kam: kamName,
@@ -1157,22 +1174,16 @@
             const allKeys = new Set();
             filteredData.forEach(row => Object.keys(row._raw).forEach(k => allKeys.add(k)));
 
-            // HARD BLOCKLIST: these exact column name patterns are NEVER shown in the table
             function shouldExcludeColumn(colName) {
                 const lower = colName.toLowerCase().trim();
-                // Internal keys
                 if (internalKeys.includes(colName)) return true;
-                // KAM, status, ops reply columns
                 if (colName === COL_MAP.kam || colName === COL_MAP.status || colName === COL_MAP.opsReply) return true;
-                // Any column in the global ops reply cols list
                 if (COL_MAP.opsReplyCols && COL_MAP.opsReplyCols.includes(colName)) return true;
-                // Email/address columns
                 if (lower.includes('email') || lower.includes('e-mail') || lower.includes('@')) return true;
                 if (lower.includes('address') && !lower.includes('consignment')) return true;
-                // Comment / reply / ops columns - VERY BROAD MATCH
-                if (lower.includes('comment')) return true;  // catches Comments 1, Comments 2, etc.
-                if (lower.includes('reply')) return true;      // catches Ops Reply, Reply, etc.
-                if (lower.includes('ops end') || lower.includes('opsend')) return true; // catches Ops End
+                if (lower.includes('comment')) return true;
+                if (lower.includes('reply')) return true;
+                if (lower.includes('ops end') || lower.includes('opsend')) return true;
                 if (lower.includes('ops reply') || lower.includes('opsreply')) return true;
                 if (lower === 'ops') return true;
                 return false;
@@ -1180,10 +1191,6 @@
 
             let displayCols = Array.from(allKeys).filter(k => !shouldExcludeColumn(k));
 
-            console.log('All raw columns:', Array.from(allKeys));
-            console.log('Display columns after exclusion:', displayCols);
-
-            // Prioritize "Issue Details" or similar detail/description columns first
             const detailKeywords = ['issue detail', 'details', 'detail', 'description', 'desc', 'remarks', 'notes'];
             const priorityCols = [];
             const otherCols = [];
@@ -1195,7 +1202,6 @@
                     otherCols.push(col);
                 }
             }
-            // Sort priority: exact "Issue Details" first, then other matches
             priorityCols.sort((a, b) => {
                 const aLower = a.toLowerCase();
                 const bLower = b.toLowerCase();
@@ -1205,9 +1211,6 @@
             });
             displayCols = [...priorityCols, ...otherCols].slice(0, 5);
 
-            console.log('Final display columns:', displayCols);
-
-            // Header with Comments columns
             let headerHTML = '<th style="width:40px"></th><th>KAM</th><th>Status</th>';
             displayCols.forEach(col => {
                 headerHTML += `<th>${col}</th>`;
@@ -1215,7 +1218,6 @@
             headerHTML += '<th>Comments 1 (Ops End)</th><th>Comments 2 (Ops End)</th><th>Sheet</th>';
             thead.innerHTML = headerHTML;
 
-            // Body
             const start = (currentPage - 1) * PAGE_SIZE;
             const end = Math.min(start + PAGE_SIZE, filteredData.length);
             const pageData = filteredData.slice(start, end);
@@ -1309,66 +1311,38 @@
             loadAllSheets();
         }
 
-        // ===================== THEME / DARK MODE =====================
-        function toggleThemeDropdown() {
-            const dd = document.getElementById('themeDropdown');
-            dd.classList.toggle('hidden');
-        }
-
-        function setTheme(mode) {
+        // ===================== DARK MODE TOGGLE =====================
+        function toggleDarkMode() {
             const html = document.documentElement;
-            const icon = document.getElementById('themeIcon');
-            const label = document.getElementById('themeLabel');
-
-            if (mode === 'system') {
-                const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-                if (prefersDark) {
-                    html.classList.add('dark');
-                    icon.textContent = '🌙';
-                    label.textContent = 'Dark';
-                } else {
-                    html.classList.remove('dark');
-                    icon.textContent = '☀️';
-                    label.textContent = 'Light';
-                }
-            } else if (mode === 'dark') {
-                html.classList.add('dark');
-                icon.textContent = '🌙';
-                label.textContent = 'Dark';
-            } else {
-                html.classList.remove('dark');
-                icon.textContent = '☀️';
-                label.textContent = 'Light';
-            }
-
-            localStorage.setItem('carrybee-theme', mode);
-            document.getElementById('themeDropdown').classList.add('hidden');
-
-            // Re-render charts to update colors
-            if (categoryChart) { categoryChart.destroy(); renderCategoryChart(); }
-            if (dailyChart) { dailyChart.destroy(); renderDailyChart(); }
+            const toggle = document.getElementById('themeToggle');
+            const isDark = html.classList.toggle('dark');
+            
+            toggle.classList.toggle('dark', isDark);
+            localStorage.setItem('carrybee-dark', isDark ? '1' : '0');
+            
+            // Re-render charts with updated colors
+            setTimeout(() => {
+                if (categoryChart) { categoryChart.destroy(); renderCategoryChart(); }
+                if (dailyChart) { dailyChart.destroy(); renderDailyChart(); }
+            }, 50);
         }
 
         function initTheme() {
-            const saved = localStorage.getItem('carrybee-theme') || 'system';
-            setTheme(saved);
-        }
-
-        // Close dropdown when clicking outside
-        document.addEventListener('click', (e) => {
+            const saved = localStorage.getItem('carrybee-dark');
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            const isDark = saved === null ? prefersDark : saved === '1';
+            
+            const html = document.documentElement;
             const toggle = document.getElementById('themeToggle');
-            const dropdown = document.getElementById('themeDropdown');
-            if (toggle && dropdown && !toggle.contains(e.target) && !dropdown.contains(e.target)) {
-                dropdown.classList.add('hidden');
+            
+            if (isDark) {
+                html.classList.add('dark');
+                toggle.classList.add('dark');
+            } else {
+                html.classList.remove('dark');
+                toggle.classList.remove('dark');
             }
-        });
-
-        // Listen for system theme changes
-        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
-            if (localStorage.getItem('carrybee-theme') === 'system') {
-                setTheme('system');
-            }
-        });
+        }
 
         setInterval(refreshAll, 300000);
         initTheme();
