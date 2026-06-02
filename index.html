@@ -394,7 +394,9 @@
 
         const KAM_MAP = {
             'ahmed.asif@carrybee.com': 'AHMED ASIF RASHID',
-            'nuruzzaman.nahid@carrybee.com': 'NURUZZAMAN NAHID'
+            'ahmed.asif': 'AHMED ASIF RASHID',
+            'nuruzzaman.nahid@carrybee.com': 'NURUZZAMAN NAHID',
+            'nuruzzaman.nahid': 'NURUZZAMAN NAHID'
         };
 
         const TARGET_KAMS = ['AHMED ASIF RASHID', 'NURUZZAMAN NAHID'];
@@ -421,7 +423,9 @@
         function normalizeKAM(val) {
             if (!val) return 'Unknown';
             const clean = String(val).toLowerCase().trim();
-            return KAM_MAP[clean] || String(val).toUpperCase();
+            // Check full value first, then fallback to username-only (before @)
+            const base = clean.split('@')[0];
+            return KAM_MAP[clean] || KAM_MAP[base] || String(val).toUpperCase();
         }
 
         function detectColumns(headers, sampleRows) {
