@@ -25,6 +25,8 @@
         .avatar-nahid { background: linear-gradient(135deg, #10b981, #059669); }
         .badge { padding: 4px 12px; border-radius: 8px; font-size: 12px; font-weight: 600; }
         .badge-pink { background: #fce7f3; color: #be185d; border: 1px solid #fbcfe8; }
+        .badge-blue { background: #dbeafe; color: #1e40af; border: 1px solid #bfdbfe; }
+        .badge-green { background: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }
         .stat-box { background: #f8fafc; border-radius: 12px; padding: 16px; text-align: center; }
         .category-pill { background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 8px; padding: 6px 12px; font-size: 12px; color: #475569; font-weight: 500; }
         .urgent-bar { background: linear-gradient(90deg, #fef3c7, #fffbeb); border: 1px solid #fde68a; border-radius: 10px; padding: 12px 16px; display: flex; align-items: center; gap: 8px; color: #b45309; font-size: 13px; font-weight: 600; }
@@ -142,6 +144,7 @@
         .status-solved { background: #10b981; }
         .status-pending { background: #f59e0b; }
         .status-urgent { background: #f43f5e; }
+        .status-picked { background: #3b82f6; }
         .empty-state {
             padding: 60px 20px;
             text-align: center;
@@ -179,6 +182,19 @@
         .debug-bar span { margin-right: 12px; }
         .debug-bar .ok { color: #059669; }
         .debug-bar .err { color: #dc2626; }
+        .ops-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .ops-badge-picked { background: #dbeafe; color: #1e40af; }
+        .ops-badge-solved { background: #d1fae5; color: #065f46; }
+        .ops-name { font-weight: 600; color: #1e40af; }
+        .solved-time { font-size: 11px; color: #059669; font-weight: 500; }
     </style>
 </head>
 <body class="min-h-screen pb-10">
@@ -227,7 +243,7 @@
                 <div class="loading-shimmer h-10 w-20"></div>
             </div>
             <div class="card summary-card border-purple p-5 card-hover">
-                <div class="text-xs text-slate-500 font-semibold uppercase tracking-wider mb-2">IR Mails</div>
+                <div class="text-xs text-slate-500 font-semibold uppercase tracking-wider mb-2">Picked</div>
                 <div class="loading-shimmer h-10 w-20"></div>
             </div>
             <div class="card summary-card border-rose p-5 card-hover">
@@ -254,7 +270,7 @@
                     <div class="stat-box"><div class="text-2xl font-bold text-blue-600" id="ahmedTotal">--</div><div class="text-xs text-slate-400 mt-1 font-medium">TOTAL</div></div>
                     <div class="stat-box"><div class="text-2xl font-bold text-emerald-600" id="ahmedSolved">--</div><div class="text-xs text-slate-400 mt-1 font-medium">SOLVED</div></div>
                     <div class="stat-box"><div class="text-2xl font-bold text-amber-500" id="ahmedPending">--</div><div class="text-xs text-slate-400 mt-1 font-medium">PENDING</div></div>
-                    <div class="stat-box"><div class="text-2xl font-bold text-purple-600" id="ahmedIR">--</div><div class="text-xs text-slate-400 mt-1 font-medium">IR MAILS</div></div>
+                    <div class="stat-box"><div class="text-2xl font-bold text-purple-600" id="ahmedPicked">--</div><div class="text-xs text-slate-400 mt-1 font-medium">PICKED</div></div>
                 </div>
                 <div class="mb-3">
                     <div class="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-2">Top Categories</div>
@@ -285,7 +301,7 @@
                     <div class="stat-box"><div class="text-2xl font-bold text-blue-600" id="nahidTotal">--</div><div class="text-xs text-slate-400 mt-1 font-medium">TOTAL</div></div>
                     <div class="stat-box"><div class="text-2xl font-bold text-emerald-600" id="nahidSolved">--</div><div class="text-xs text-slate-400 mt-1 font-medium">SOLVED</div></div>
                     <div class="stat-box"><div class="text-2xl font-bold text-amber-500" id="nahidPending">--</div><div class="text-xs text-slate-400 mt-1 font-medium">PENDING</div></div>
-                    <div class="stat-box"><div class="text-2xl font-bold text-purple-600" id="nahidIR">--</div><div class="text-xs text-slate-400 mt-1 font-medium">IR MAILS</div></div>
+                    <div class="stat-box"><div class="text-2xl font-bold text-purple-600" id="nahidPicked">--</div><div class="text-xs text-slate-400 mt-1 font-medium">PICKED</div></div>
                 </div>
                 <div class="mb-3">
                     <div class="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-2">Top Categories</div>
@@ -354,6 +370,13 @@
                         <option value="Sheet 2">OSD</option>
                         <option value="Sheet 3">Central</option>
                     </select>
+                    <select id="statusFilter" class="dropdown-select" onchange="applyFilters()">
+                        <option value="all">All Status</option>
+                        <option value="picked">Issue Picked</option>
+                        <option value="solved">Solved</option>
+                        <option value="pending">Pending</option>
+                        <option value="urgent">Urgent</option>
+                    </select>
                 </div>
             </div>
 
@@ -362,6 +385,7 @@
                 <button class="filter-pill active" id="pill-all" onclick="setPillFilter('all')">All</button>
                 <button class="filter-pill" id="pill-ahmed" onclick="setPillFilter('ahmed')">Ahmed Asif Rashid</button>
                 <button class="filter-pill" id="pill-nahid" onclick="setPillFilter('nahid')">Nuruzzaman Nahid</button>
+                <button class="filter-pill" id="pill-picked" onclick="setPillFilter('picked')">Picked Only</button>
                 <button class="filter-pill" id="pill-ir" onclick="setPillFilter('ir')">IR mails only</button>
             </div>
 
@@ -415,7 +439,7 @@
 
         const TARGET_KAMS = ['AHMED ASIF RASHID', 'NURUZZAMAN NAHID'];
 
-        let COL_MAP = { kam: null, status: null, category: null, date: null, irMail: null, consignment: null, details: null };
+        let COL_MAP = { kam: null, status: null, category: null, date: null, irMail: null, consignment: null, details: null, opsEnd: null, opsStatus: null, solvedTime: null };
         let allData = [];
         let teamData = [];
         let filteredData = [];
@@ -432,11 +456,9 @@
             const str = String(val).trim();
             if (!str) return null;
 
-            // Try native Date first
             let d = new Date(str);
             if (!isNaN(d.getTime())) return d;
 
-            // Handle "6/2/2026 9:53:00" or "6/2/2026" (M/D/YYYY)
             const usMatch = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2}):(\d{2}))?/);
             if (usMatch) {
                 const [, mm, dd, yyyy, hh = 0, min = 0, ss = 0] = usMatch;
@@ -444,19 +466,15 @@
                 if (!isNaN(d.getTime())) return d;
             }
 
-            // Handle "2/6/2026" as D/M/YYYY if day > 12
             const altMatch = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
             if (altMatch) {
                 const [, first, second, yyyy] = altMatch;
-                const firstNum = parseInt(first);
-                const secondNum = parseInt(second);
-                if (firstNum > 12) {
-                    d = new Date(parseInt(yyyy), secondNum - 1, firstNum);
+                if (parseInt(first) > 12) {
+                    d = new Date(parseInt(yyyy), parseInt(second) - 1, parseInt(first));
                     if (!isNaN(d.getTime())) return d;
                 }
             }
 
-            // DD-MM-YYYY
             const euDashMatch = str.match(/^(\d{1,2})-(\d{1,2})-(\d{4})/);
             if (euDashMatch) {
                 const [, dd, mm, yyyy] = euDashMatch;
@@ -464,7 +482,6 @@
                 if (!isNaN(d.getTime())) return d;
             }
 
-            // YYYY-MM-DD
             const isoMatch = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
             if (isoMatch) {
                 const [, yyyy, mm, dd] = isoMatch;
@@ -472,7 +489,6 @@
                 if (!isNaN(d.getTime())) return d;
             }
 
-            // Google Sheets / Excel serial number
             const serial = parseFloat(str);
             if (!isNaN(serial) && serial > 30000 && serial < 60000) {
                 d = new Date((serial - 25569) * 86400 * 1000);
@@ -511,7 +527,7 @@
 
         function detectColumns(headers, sampleRows) {
             const h = headers.map(x => x.toLowerCase().trim());
-            const map = { kam: null, status: null, category: null, date: null, irMail: null, consignment: null, details: null };
+            const map = { kam: null, status: null, category: null, date: null, irMail: null, consignment: null, details: null, opsEnd: null, opsStatus: null, solvedTime: null };
 
             for (let i = 0; i < h.length; i++) {
                 const col = h[i];
@@ -563,6 +579,21 @@
                     map.details = headers[i]; break;
                 }
             }
+            // Detect Ops End columns
+            for (let i = 0; i < h.length; i++) {
+                const col = h[i];
+                if ((col.includes('issue') && col.includes('taking') && col.includes('care')) || 
+                    (col.includes('ops') && col.includes('end')) ||
+                    (col.includes('responsible') && col.includes('end'))) {
+                    map.opsEnd = headers[i]; break;
+                }
+            }
+            for (let i = 0; i < h.length; i++) {
+                const col = h[i];
+                if (col.includes('issue') && col.includes('pick') && col.includes('age')) {
+                    map.opsStatus = headers[i]; break;
+                }
+            }
             return map;
         }
 
@@ -570,6 +601,12 @@
             if (!status) return false;
             const s = String(status).toLowerCase();
             return s.includes('solved') || s.includes('resolved') || s.includes('closed') || s.includes('done') || s.includes('complete');
+        }
+
+        function isPicked(status) {
+            if (!status) return false;
+            const s = String(status).toLowerCase();
+            return s.includes('picked') || s.includes('assigned') || s.includes('taken') || s.includes('working');
         }
 
         function isUrgent(status, row) {
@@ -592,13 +629,9 @@
         // ===================== SORT BY DATE DESCENDING =====================
         function sortByDateDesc(data) {
             return data.sort((a, b) => {
-                // Both have dates — compare normally
                 if (a._date && b._date) return b._date - a._date;
-                // Only a has date — a comes first
                 if (a._date && !b._date) return -1;
-                // Only b has date — b comes first
                 if (!a._date && b._date) return 1;
-                // Neither has date — keep original order
                 return 0;
             });
         }
@@ -633,6 +666,8 @@
                     if (!COL_MAP.irMail && detected.irMail) COL_MAP.irMail = detected.irMail;
                     if (!COL_MAP.consignment && detected.consignment) COL_MAP.consignment = detected.consignment;
                     if (!COL_MAP.details && detected.details) COL_MAP.details = detected.details;
+                    if (!COL_MAP.opsEnd && detected.opsEnd) COL_MAP.opsEnd = detected.opsEnd;
+                    if (!COL_MAP.opsStatus && detected.opsStatus) COL_MAP.opsStatus = detected.opsStatus;
 
                     const kamCol = COL_MAP.kam || detected.kam || headers[0];
                     let sheetTeamCount = 0;
@@ -654,18 +689,33 @@
                         const categoryVal = row[COL_MAP.category || detected.category || ''];
                         const dateVal = row[COL_MAP.date || detected.date || ''];
                         const irVal = (COL_MAP.irMail || detected.irMail) ? row[COL_MAP.irMail || detected.irMail] : '';
+                        const opsEndVal = (COL_MAP.opsEnd || detected.opsEnd) ? row[COL_MAP.opsEnd || detected.opsEnd] : '';
+                        const opsStatusVal = (COL_MAP.opsStatus || detected.opsStatus) ? row[COL_MAP.opsStatus || detected.opsStatus] : '';
+
+                        // Determine overall status
+                        let isIssueSolved = isSolved(statusVal);
+                        let isIssuePicked = isPicked(opsStatusVal) || isPicked(statusVal);
+                        let isIssueUrgent = isUrgent(statusVal, row);
+
+                        // If ops status says "Issue Picked" but not solved, mark as picked
+                        if (isIssuePicked && !isIssueSolved) {
+                            // Keep as picked
+                        }
 
                         allData.push({
                             _kam: kamName,
                             _kamOriginal: kamVal,
                             _kamFoundCol: foundCol,
                             _status: statusVal,
-                            _solved: isSolved(statusVal),
-                            _urgent: isUrgent(statusVal, row),
+                            _solved: isIssueSolved,
+                            _picked: isIssuePicked,
+                            _urgent: isIssueUrgent,
                             _category: categoryVal ? String(categoryVal).trim() : 'Uncategorized',
                             _date: parseDateRobust(dateVal),
                             _dateRaw: dateVal,
                             _irMail: isIRMail(irVal),
+                            _opsEnd: opsEndVal ? String(opsEndVal).trim() : '',
+                            _opsStatus: opsStatusVal ? String(opsStatusVal).trim() : '',
                             _sheet: SHEETS[i].name,
                             _sheetDisplay: SHEETS[i].displayName,
                             _raw: row
@@ -682,10 +732,7 @@
                 }
             }
 
-            // SORT ALL DATA BY DATE DESCENDING (newest first)
             allData = sortByDateDesc(allData);
-
-            // Now filter to team members — order is preserved from the sort above
             teamData = allData.filter(d => TARGET_KAMS.includes(d._kam));
 
             // Show debug info
@@ -720,6 +767,7 @@
 
             const total = teamData.length;
             const solved = teamData.filter(d => d._solved).length;
+            const picked = teamData.filter(d => d._picked && !d._solved).length;
             const ratio = total > 0 ? Math.round((solved / total) * 100) : 0;
             const irMails = teamData.filter(d => d._irMail).length;
             const urgent = teamData.filter(d => d._urgent).length;
@@ -738,8 +786,8 @@
                     <div class="text-3xl font-extrabold text-amber-500">${ratio}%</div>
                 </div>
                 <div class="card summary-card border-purple p-5 card-hover fade-in">
-                    <div class="text-xs text-slate-500 font-semibold uppercase tracking-wider mb-2">IR Mails</div>
-                    <div class="text-3xl font-extrabold text-purple-600">${irMails}</div>
+                    <div class="text-xs text-slate-500 font-semibold uppercase tracking-wider mb-2">Picked</div>
+                    <div class="text-3xl font-extrabold text-purple-600">${picked}</div>
                 </div>
                 <div class="card summary-card border-rose p-5 card-hover fade-in">
                     <div class="text-xs text-slate-500 font-semibold uppercase tracking-wider mb-2">Urgent</div>
@@ -756,15 +804,16 @@
         function renderKAMCard(prefix, data) {
             const total = data.length;
             const solved = data.filter(d => d._solved).length;
-            const pending = total - solved;
+            const picked = data.filter(d => d._picked && !d._solved).length;
+            const pending = total - solved - picked;
             const ir = data.filter(d => d._irMail).length;
             const ratio = total > 0 ? Math.round((solved / total) * 100) : 0;
             const urgent = data.filter(d => d._urgent).length;
 
             document.getElementById(`${prefix}Total`).textContent = total;
             document.getElementById(`${prefix}Solved`).textContent = solved;
-            document.getElementById(`${prefix}Pending`).textContent = pending;
-            document.getElementById(`${prefix}IR`).textContent = ir;
+            document.getElementById(`${prefix}Pending`).textContent = pending >= 0 ? pending : 0;
+            document.getElementById(`${prefix}Picked`).textContent = picked;
             document.getElementById(`${prefix}Ratio`).textContent = `${ratio}%`;
 
             const catCounts = {};
@@ -871,13 +920,21 @@
             const catFilter = document.getElementById('categoryFilter').value;
             const kamFilter = document.getElementById('kamFilter').value;
             const sheetFilter = document.getElementById('sheetFilter').value;
+            const statusFilter = document.getElementById('statusFilter').value;
 
             let data = [...teamData];
 
             // Pill filter
             if (currentPill === 'ahmed') data = data.filter(d => d._kam === 'AHMED ASIF RASHID');
             else if (currentPill === 'nahid') data = data.filter(d => d._kam === 'NURUZZAMAN NAHID');
+            else if (currentPill === 'picked') data = data.filter(d => d._picked && !d._solved);
             else if (currentPill === 'ir') data = data.filter(d => d._irMail);
+
+            // Status dropdown filter
+            if (statusFilter === 'picked') data = data.filter(d => d._picked && !d._solved);
+            else if (statusFilter === 'solved') data = data.filter(d => d._solved);
+            else if (statusFilter === 'pending') data = data.filter(d => !d._solved && !d._picked && !d._urgent);
+            else if (statusFilter === 'urgent') data = data.filter(d => d._urgent);
 
             // Search
             if (search) {
@@ -914,7 +971,6 @@
             // Sheet filter
             if (sheetFilter !== 'all') data = data.filter(d => d._sheet === sheetFilter);
 
-            // Sort filtered results by date descending too (so filters don't break the order)
             filteredData = sortByDateDesc(data);
             currentPage = 1;
             renderTable();
@@ -936,10 +992,10 @@
             const internalKeys = ['_sheet', '_sheetIndex', '_kamOriginal', '_kamFoundCol', '_raw', '_sheetDisplay', '_dateRaw'];
             const allKeys = new Set();
             filteredData.forEach(row => Object.keys(row._raw).forEach(k => allKeys.add(k)));
-            const displayCols = Array.from(allKeys).filter(k => !internalKeys.includes(k) && k !== COL_MAP.kam && k !== COL_MAP.status).slice(0, 6);
+            const displayCols = Array.from(allKeys).filter(k => !internalKeys.includes(k) && k !== COL_MAP.kam && k !== COL_MAP.status && k !== COL_MAP.opsEnd && k !== COL_MAP.opsStatus).slice(0, 5);
 
             // Header
-            let headerHTML = '<th style="width:40px"></th><th>KAM</th><th>Status</th>';
+            let headerHTML = '<th style="width:40px"></th><th>KAM</th><th>Status</th><th>Ops Reply</th>';
             displayCols.forEach(col => {
                 headerHTML += `<th>${col}</th>`;
             });
@@ -954,11 +1010,35 @@
             const bodyHTML = pageData.map((d, idx) => {
                 let statusDot = 'status-pending';
                 let statusText = 'Pending';
-                if (d._solved) { statusDot = 'status-solved'; statusText = 'Solved'; }
-                else if (d._urgent) { statusDot = 'status-urgent'; statusText = 'Urgent'; }
+                let statusClass = 'text-amber-500';
+                if (d._solved) { 
+                    statusDot = 'status-solved'; 
+                    statusText = 'Solved'; 
+                    statusClass = 'text-emerald-600';
+                } else if (d._picked) {
+                    statusDot = 'status-picked';
+                    statusText = 'Picked';
+                    statusClass = 'text-blue-600';
+                } else if (d._urgent) { 
+                    statusDot = 'status-urgent'; 
+                    statusText = 'Urgent'; 
+                    statusClass = 'text-rose-500';
+                }
 
                 const kamClass = d._kam === 'AHMED ASIF RASHID' ? 'kam-tag-ahmed' : 'kam-tag-nahid';
                 const kamInitials = d._kam === 'AHMED ASIF RASHID' ? 'AR' : 'NN';
+
+                // Ops reply display
+                let opsHTML = '-';
+                if (d._opsEnd) {
+                    if (d._solved) {
+                        opsHTML = `<span class="ops-badge ops-badge-solved">✓ Solved by ${d._opsEnd}</span>`;
+                    } else if (d._picked) {
+                        opsHTML = `<span class="ops-badge ops-badge-picked">👤 Picked by ${d._opsEnd}</span>`;
+                    } else {
+                        opsHTML = `<span class="ops-name">${d._opsEnd}</span>`;
+                    }
+                }
 
                 let cells = '';
                 displayCols.forEach(col => {
@@ -969,7 +1049,8 @@
                 return `<tr>
                     <td><span class="text-xs text-slate-400">${start + idx + 1}</span></td>
                     <td><span class="kam-tag ${kamClass}"><span style="width:18px;height:18px;border-radius:50%;background:${d._kam === 'AHMED ASIF RASHID' ? '#3b82f6' : '#10b981'};color:white;font-size:10px;display:inline-flex;align-items:center;justify-content:center;font-weight:700;">${kamInitials}</span>${d._kam === 'AHMED ASIF RASHID' ? 'Ahmed Asif' : 'Nuruzzaman'}</span></td>
-                    <td><span class="flex items-center gap-2"><span class="status-dot ${statusDot}"></span><span class="text-xs font-medium ${d._solved ? 'text-emerald-600' : d._urgent ? 'text-rose-500' : 'text-amber-500'}">${statusText}</span></span></td>
+                    <td><span class="flex items-center gap-2"><span class="status-dot ${statusDot}"></span><span class="text-xs font-medium ${statusClass}">${statusText}</span></span></td>
+                    <td>${opsHTML}</td>
                     ${cells}
                     <td><span class="text-xs px-2 py-1 rounded-md bg-slate-100 text-slate-500 font-medium">${d._sheetDisplay}</span></td>
                 </tr>`;
@@ -1012,6 +1093,7 @@
                 <div><label class="block text-sm font-medium text-slate-700 mb-1">Category Column</label><input type="text" id="setting-category" value="${COL_MAP.category || ''}" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500"></div>
                 <div><label class="block text-sm font-medium text-slate-700 mb-1">Date Column</label><input type="text" id="setting-date" value="${COL_MAP.date || ''}" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500"></div>
                 <div><label class="block text-sm font-medium text-slate-700 mb-1">IR Mail Column</label><input type="text" id="setting-ir" value="${COL_MAP.irMail || ''}" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500"></div>
+                <div><label class="block text-sm font-medium text-slate-700 mb-1">Ops End Column (Issue Taking Care By)</label><input type="text" id="setting-ops" value="${COL_MAP.opsEnd || ''}" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500"></div>
             `;
             document.getElementById('settingsContent').innerHTML = content;
             document.getElementById('settingsModal').classList.remove('hidden');
@@ -1027,6 +1109,7 @@
             COL_MAP.category = document.getElementById('setting-category').value.trim() || null;
             COL_MAP.date = document.getElementById('setting-date').value.trim() || null;
             COL_MAP.irMail = document.getElementById('setting-ir').value.trim() || null;
+            COL_MAP.opsEnd = document.getElementById('setting-ops').value.trim() || null;
             closeSettings();
             loadAllSheets();
         }
