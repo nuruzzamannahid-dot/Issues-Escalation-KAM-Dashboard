@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Carrybee Issue Tracker Dashboard</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.tailwindcss.com?v=2"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -630,15 +630,18 @@
             return map;
         }
 
-        function isSolved(status, opsReply) {
-            const hasOpsComment = opsReply && String(opsReply).trim().length > 0 && String(opsReply).trim() !== '-';
+        function isSolved(status, comment1, comment2) {
+            const hasComment1 = comment1 && String(comment1).trim().length > 0 && String(comment1).trim() !== '-';
+            const hasComment2 = comment2 && String(comment2).trim().length > 0 && String(comment2).trim() !== '-';
+            const hasAnyComment = hasComment1 || hasComment2;
+
             // If status explicitly says solved
             if (status) {
                 const s = String(status).toLowerCase();
                 if (s.includes('solved') || s.includes('resolved') || s.includes('closed') || s.includes('done') || s.includes('complete')) return true;
             }
-            // If OPS has commented in any comment column, mark as solved
-            if (hasOpsComment) return true;
+            // If OPS has commented in Comments 1 or Comments 2, mark as solved
+            if (hasAnyComment) return true;
             return false;
         }
 
@@ -710,7 +713,9 @@
                         consignment: detected.consignment || COL_MAP.consignment,
                         details: detected.details || COL_MAP.details,
                         opsReplyCols: detected.opsReplyCols || [],
-                        opsReply: detected.opsReply
+                        opsReply: detected.opsReply,
+                        comment1: detected.comment1,
+                        comment2: detected.comment2
                     };
 
                     const kamCol = sheetColMap.kam || headers[0];
@@ -733,13 +738,11 @@
                         const categoryVal = row[sheetColMap.category || ''];
                         const dateVal = row[sheetColMap.date || ''];
                         const irVal = sheetColMap.irMail ? row[sheetColMap.irMail] : '';
-                        // Check ALL detected ops/comment columns (sheets have 2 comment sections)
-                    const opsCols = sheetColMap.opsReplyCols || [];
-                    let opsVal = '';
-                    for (const col of opsCols) {
-                        const v = row[col];
-                        if (v && String(v).trim()) { opsVal = String(v).trim(); break; }
-                    }
+                        // Capture both comment columns separately
+                    const comment1Val = sheetColMap.comment1 ? (row[sheetColMap.comment1] || '') : '';
+                    const comment2Val = sheetColMap.comment2 ? (row[sheetColMap.comment2] || '') : '';
+                    const opsVal = String(comment1Val).trim() || String(comment2Val).trim();
+
                     // Accumulate ops reply columns globally for Settings modal
                     if (detected.opsReplyCols && detected.opsReplyCols.length) {
                         const existing = new Set(COL_MAP.opsReplyCols || []);
@@ -752,13 +755,15 @@
                             _kamOriginal: kamVal,
                             _kamFoundCol: foundCol,
                             _status: statusVal,
-                            _solved: isSolved(statusVal, opsVal),
+                            _solved: isSolved(statusVal, comment1Val, comment2Val),
                             _urgent: isUrgent(statusVal, row),
                             _category: categoryVal ? String(categoryVal).trim() : 'Uncategorized',
                             _date: parseDateRobust(dateVal),
                             _dateRaw: dateVal,
                             _irMail: isIRMail(irVal),
                             _opsReply: opsVal ? String(opsVal).trim() : '',
+                            _comment1: comment1Val ? String(comment1Val).trim() : '',
+                            _comment2: comment2Val ? String(comment2Val).trim() : '',
                             _sheet: SHEETS[i].name,
                             _sheetDisplay: SHEETS[i].displayName,
                             _raw: row
@@ -1015,20 +1020,36 @@
             const allKeys = new Set();
             filteredData.forEach(row => Object.keys(row._raw).forEach(k => allKeys.add(k)));
 
-            // Columns to exclude from display
-            const excludeCols = new Set([...internalKeys, COL_MAP.kam, COL_MAP.status, COL_MAP.opsReply]);
-            // Also exclude email/address columns
-            allKeys.forEach(k => {
-                const lower = k.toLowerCase();
-                if (lower.includes('email') || lower.includes('mail') || lower.includes('address') || lower.includes('e-mail')) {
-                    excludeCols.add(k);
-                }
-            });
+            // HARD BLOCKLIST: these exact column name patterns are NEVER shown in the table
+            function shouldExcludeColumn(colName) {
+                const lower = colName.toLowerCase().trim();
+                // Internal keys
+                if (internalKeys.includes(colName)) return true;
+                // KAM, status, ops reply columns
+                if (colName === COL_MAP.kam || colName === COL_MAP.status || colName === COL_MAP.opsReply) return true;
+                // Any column in the global ops reply cols list
+                if (COL_MAP.opsReplyCols && COL_MAP.opsReplyCols.includes(colName)) return true;
+                // Email/address columns
+                if (lower.includes('email') || lower.includes('e-mail') || lower.includes('@')) return true;
+                if (lower.includes('address') && !lower.includes('consignment')) return true;
+                // Comment / reply / ops columns - VERY BROAD MATCH
+                if (lower.includes('comment')) return true;  // catches Comments 1, Comments 2, etc.
+                if (lower.includes('reply')) return true;      // catches Ops Reply, Reply, etc.
+                if (lower.includes('ops end') || lower.includes('opsend')) return true; // catches Ops End
+                if (lower.includes('ops reply') || lower.includes('opsreply')) return true;
+                if (lower === 'ops') return true;
+                // Merchant/ID columns that are too long
+                if (lower.includes('merchant name') && lower.includes('applicable')) return true;
+                return false;
+            }
 
-            let displayCols = Array.from(allKeys).filter(k => !excludeCols.has(k));
+            let displayCols = Array.from(allKeys).filter(k => !shouldExcludeColumn(k));
+
+            console.log('All raw columns:', Array.from(allKeys));
+            console.log('Display columns after exclusion:', displayCols);
 
             // Prioritize "Issue Details" or similar detail/description columns first
-            const detailKeywords = ['issue detail', 'details', 'detail', 'description', 'desc', 'remarks', 'notes', 'comment'];
+            const detailKeywords = ['issue detail', 'details', 'detail', 'description', 'desc', 'remarks', 'notes'];
             const priorityCols = [];
             const otherCols = [];
             for (const col of displayCols) {
@@ -1049,12 +1070,14 @@
             });
             displayCols = [...priorityCols, ...otherCols].slice(0, 5);
 
-            // Header with Ops Reply column
+            console.log('Final display columns:', displayCols);
+
+            // Header with Comments columns
             let headerHTML = '<th style="width:40px"></th><th>KAM</th><th>Status</th>';
             displayCols.forEach(col => {
                 headerHTML += `<th>${col}</th>`;
             });
-            headerHTML += '<th>Ops Reply</th><th>Sheet</th>';
+            headerHTML += '<th>Comments 1 (Ops End)</th><th>Comments 2 (Ops End)</th><th>Sheet</th>';
             thead.innerHTML = headerHTML;
 
             // Body
@@ -1071,7 +1094,8 @@
                 const kamClass = d._kam === 'AHMED ASIF RASHID' ? 'kam-tag-ahmed' : 'kam-tag-nahid';
                 const kamInitials = d._kam === 'AHMED ASIF RASHID' ? 'AR' : 'NN';
 
-                const opsStatus = getOpsReplyStatus(d._opsReply, d._solved);
+                const comment1Text = d._comment1 || '-';
+                const comment2Text = d._comment2 || '-';
 
                 let cells = '';
                 displayCols.forEach(col => {
@@ -1084,7 +1108,8 @@
                     <td><span class="kam-tag ${kamClass}"><span style="width:18px;height:18px;border-radius:50%;background:${d._kam === 'AHMED ASIF RASHID' ? '#3b82f6' : '#10b981'};color:white;font-size:10px;display:inline-flex;align-items:center;justify-content:center;font-weight:700;">${kamInitials}</span>${d._kam === 'AHMED ASIF RASHID' ? 'Ahmed Asif' : 'Nuruzzaman'}</span></td>
                     <td><span class="flex items-center gap-2"><span class="status-dot ${statusDot}"></span><span class="text-xs font-medium ${d._solved ? 'text-emerald-600' : d._urgent ? 'text-rose-500' : 'text-amber-500'}">${statusText}</span></span></td>
                     ${cells}
-                    <td><span class="ops-badge ${opsStatus.class}">${opsStatus.text}</span></td>
+                    <td><span class="text-xs text-slate-600">${comment1Text}</span></td>
+                    <td><span class="text-xs text-slate-600">${comment2Text}</span></td>
                     <td><span class="text-xs px-2 py-1 rounded-md bg-slate-100 text-slate-500 font-medium">${d._sheetDisplay}</span></td>
                 </tr>`;
             }).join('');
@@ -1124,7 +1149,7 @@
                 <div><label class="block text-sm font-medium text-slate-700 mb-1">Category Column</label><input type="text" id="setting-category" value="${COL_MAP.category || ''}" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500"></div>
                 <div><label class="block text-sm font-medium text-slate-700 mb-1">Date Column</label><input type="text" id="setting-date" value="${COL_MAP.date || ''}" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500"></div>
                 <div><label class="block text-sm font-medium text-slate-700 mb-1">IR Mail Column</label><input type="text" id="setting-ir" value="${COL_MAP.irMail || ''}" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500"></div>
-                <div><label class="block text-sm font-medium text-slate-700 mb-1">Ops Reply Column</label><input type="text" id="setting-ops" value="${COL_MAP.opsReply || ''}" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500"></div>
+                <div><label class="block text-sm font-medium text-slate-700 mb-1">Comments 1 (Ops End) Column</label><input type="text" id="setting-ops" value="${COL_MAP.opsReply || ''}" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500"></div>
             `;
             document.getElementById('settingsContent').innerHTML = content;
             document.getElementById('settingsModal').classList.remove('hidden');
