@@ -167,25 +167,18 @@
             border-radius: 2px;
             display: inline-block;
         }
-        .error-toast {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            background: #fef2f2;
-            border: 1px solid #fecaca;
-            color: #b91c1c;
-            padding: 12px 20px;
-            border-radius: 12px;
-            font-size: 13px;
-            font-weight: 500;
-            z-index: 100;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-            animation: slideIn 0.3s ease-out;
+        .debug-bar {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-size: 11px;
+            color: #64748b;
+            font-family: monospace;
         }
-        @keyframes slideIn {
-            from { transform: translateX(100%); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
-        }
+        .debug-bar span { margin-right: 12px; }
+        .debug-bar .ok { color: #059669; }
+        .debug-bar .err { color: #dc2626; }
     </style>
 </head>
 <body class="min-h-screen pb-10">
@@ -211,6 +204,9 @@
                     ⚙️ Settings
                 </button>
             </div>
+        </div>
+        <div class="max-w-7xl mx-auto mt-2">
+            <div id="debugBar" class="debug-bar hidden"></div>
         </div>
     </header>
 
@@ -404,9 +400,10 @@
 
     <script>
         // ===================== CONFIG =====================
+        // UPDATED URLs - exactly as provided by user
         const SHEETS = [
-            { name: 'Sheet 1', displayName: 'ISD', url: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRvcHh_-szyOevlR4V86qiagypaMcBaF-ikwfeMJ-vamXKQBH7jWaIrmajn9VdgE5xm78RN_L30O5_s/pub?gid=966376107&single=true&output=csv' },
-            { name: 'Sheet 2', displayName: 'OSD', url: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSAVNwzXLfSVFu4psJlhz7pqMKtEocVNUKChUbpRaFoXVxSric-zuGESs7GyT0R6DO_sF76RE951c3B/pub?gid=0&single=true&output=csv' },
+            { name: 'Sheet 1', displayName: 'ISD', url: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRvcHh_-szyOevlR4V86qiagypaMcBaF-ikwfeMJ-vamXKQBH7jWaIrmajn9VdgE5xm78RN_L30O5_s/pub?output=csv' },
+            { name: 'Sheet 2', displayName: 'OSD', url: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSAVNwzXLfSVFu4psJlhz7pqMKtEocVNUKChUbpRaFoXVxSric-zuGESs7GyT0R6DO_sF76RE951c3B/pub?output=csv' },
             { name: 'Sheet 3', displayName: 'Central', url: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRsO79-0XIgKVkMKaIPjkBCp-npePr9WxH8LCX3jcPslWC4PlP4Qsa0qalr6FQuBZGmPsiLnkt2uv2S/pub?gid=0&single=true&output=csv' }
         ];
 
@@ -440,8 +437,7 @@
             let d = new Date(str);
             if (!isNaN(d.getTime())) return d;
 
-            // Handle "6/2/2026 9:53:00" or "6/2/2026"
-            // Try MM/DD/YYYY first (US format common in Google Sheets)
+            // Handle "6/2/2026 9:53:00" or "6/2/2026" (M/D/YYYY)
             const usMatch = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2}):(\d{2}))?/);
             if (usMatch) {
                 const [, mm, dd, yyyy, hh = 0, min = 0, ss = 0] = usMatch;
@@ -449,15 +445,20 @@
                 if (!isNaN(d.getTime())) return d;
             }
 
-            // Try DD/MM/YYYY format
-            const euMatch = str.match(/^(\d{1,2})-(\d{1,2})-(\d{4})(?:\s+(\d{1,2}):(\d{2}):(\d{2}))?/);
-            if (euMatch) {
-                const [, dd, mm, yyyy, hh = 0, min = 0, ss = 0] = euMatch;
-                d = new Date(parseInt(yyyy), parseInt(mm) - 1, parseInt(dd), parseInt(hh), parseInt(min), parseInt(ss));
-                if (!isNaN(d.getTime())) return d;
+            // Handle "2/6/2026" as D/M/YYYY if day > 12
+            const altMatch = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+            if (altMatch) {
+                const [, first, second, yyyy] = altMatch;
+                const firstNum = parseInt(first);
+                const secondNum = parseInt(second);
+                // If first number > 12, it's likely DD/MM/YYYY
+                if (firstNum > 12) {
+                    d = new Date(parseInt(yyyy), secondNum - 1, firstNum);
+                    if (!isNaN(d.getTime())) return d;
+                }
             }
 
-            // Try DD-MM-YYYY
+            // DD-MM-YYYY
             const euDashMatch = str.match(/^(\d{1,2})-(\d{1,2})-(\d{4})/);
             if (euDashMatch) {
                 const [, dd, mm, yyyy] = euDashMatch;
@@ -465,7 +466,7 @@
                 if (!isNaN(d.getTime())) return d;
             }
 
-            // Try YYYY-MM-DD
+            // YYYY-MM-DD
             const isoMatch = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
             if (isoMatch) {
                 const [, yyyy, mm, dd] = isoMatch;
@@ -473,10 +474,9 @@
                 if (!isNaN(d.getTime())) return d;
             }
 
-            // Try Google Sheets serial number (e.g., 45000)
+            // Google Sheets / Excel serial number
             const serial = parseFloat(str);
             if (!isNaN(serial) && serial > 30000 && serial < 60000) {
-                // Excel/Google Sheets epoch: Dec 30, 1899
                 d = new Date((serial - 25569) * 86400 * 1000);
                 if (!isNaN(d.getTime())) return d;
             }
@@ -497,6 +497,19 @@
             const clean = String(val).toLowerCase().trim();
             const base = clean.split('@')[0];
             return KAM_MAP[clean] || KAM_MAP[base] || String(val).toUpperCase();
+        }
+
+        // Try to find KAM value by scanning all columns for known patterns
+        function findKAMInRow(row) {
+            for (const key of Object.keys(row)) {
+                const val = String(row[key] || '').toLowerCase().trim();
+                if (!val) continue;
+                const base = val.split('@')[0];
+                if (KAM_MAP[val] || KAM_MAP[base]) {
+                    return { kam: KAM_MAP[val] || KAM_MAP[base], column: key };
+                }
+            }
+            return null;
         }
 
         function detectColumns(headers, sampleRows) {
@@ -587,28 +600,20 @@
 
             allData = [];
             let errors = [];
-            let sheetStats = [];
+            let debugInfo = [];
 
             for (let i = 0; i < SHEETS.length; i++) {
                 try {
                     const rows = await fetchCSV(SHEETS[i].url);
-                    sheetStats.push({ name: SHEETS[i].displayName, count: rows.length });
+                    const rowCount = rows.length;
 
-                    if (rows.length === 0) continue;
+                    if (rows.length === 0) {
+                        debugInfo.push({ name: SHEETS[i].displayName, count: 0, status: 'empty' });
+                        continue;
+                    }
 
                     const headers = Object.keys(rows[0]);
                     const detected = detectColumns(headers, rows);
-
-                    // Per-sheet column detection (don't let one sheet's columns break another)
-                    const sheetColMap = {
-                        kam: COL_MAP.kam || detected.kam || headers[0],
-                        status: COL_MAP.status || detected.status,
-                        category: COL_MAP.category || detected.category,
-                        date: COL_MAP.date || detected.date,
-                        irMail: COL_MAP.irMail || detected.irMail,
-                        consignment: COL_MAP.consignment || detected.consignment,
-                        details: COL_MAP.details || detected.details
-                    };
 
                     // Update global COL_MAP if not set
                     if (!COL_MAP.kam && detected.kam) COL_MAP.kam = detected.kam;
@@ -619,17 +624,33 @@
                     if (!COL_MAP.consignment && detected.consignment) COL_MAP.consignment = detected.consignment;
                     if (!COL_MAP.details && detected.details) COL_MAP.details = detected.details;
 
+                    const kamCol = COL_MAP.kam || detected.kam || headers[0];
+                    let sheetTeamCount = 0;
+
                     rows.forEach(row => {
-                        const kamVal = row[sheetColMap.kam];
-                        const kamName = normalizeKAM(kamVal);
-                        const statusVal = row[sheetColMap.status || ''];
-                        const categoryVal = row[sheetColMap.category || ''];
-                        const dateVal = row[sheetColMap.date || ''];
-                        const irVal = sheetColMap.irMail ? row[sheetColMap.irMail] : '';
+                        // Try detected KAM column first, fallback to scanning all columns
+                        let kamVal = row[kamCol];
+                        let kamName = normalizeKAM(kamVal);
+                        let foundCol = kamCol;
+
+                        // If normalized to Unknown, try scanning all columns for known KAMs
+                        if (kamName === 'UNKNOWN' || !TARGET_KAMS.includes(kamName)) {
+                            const found = findKAMInRow(row);
+                            if (found) {
+                                kamName = found.kam;
+                                foundCol = found.column;
+                            }
+                        }
+
+                        const statusVal = row[COL_MAP.status || detected.status || ''];
+                        const categoryVal = row[COL_MAP.category || detected.category || ''];
+                        const dateVal = row[COL_MAP.date || detected.date || ''];
+                        const irVal = (COL_MAP.irMail || detected.irMail) ? row[COL_MAP.irMail || detected.irMail] : '';
 
                         allData.push({
                             _kam: kamName,
                             _kamOriginal: kamVal,
+                            _kamFoundCol: foundCol,
                             _status: statusVal,
                             _solved: isSolved(statusVal),
                             _urgent: isUrgent(statusVal, row),
@@ -641,45 +662,43 @@
                             _sheetDisplay: SHEETS[i].displayName,
                             _raw: row
                         });
+
+                        if (TARGET_KAMS.includes(kamName)) sheetTeamCount++;
                     });
+
+                    debugInfo.push({ name: SHEETS[i].displayName, count: rowCount, teamCount: sheetTeamCount, status: 'ok' });
                 } catch (e) {
                     errors.push(`${SHEETS[i].displayName}: ${e.message}`);
+                    debugInfo.push({ name: SHEETS[i].displayName, count: 0, status: 'error', error: e.message });
                     console.error(`Failed to load ${SHEETS[i].displayName}:`, e);
                 }
             }
 
             teamData = allData.filter(d => TARGET_KAMS.includes(d._kam));
 
+            // Show debug info in header
+            const debugBar = document.getElementById('debugBar');
+            const debugHTML = debugInfo.map(d => {
+                if (d.status === 'error') return `<span class="err">${d.name}: ERROR (${d.error})</span>`;
+                if (d.status === 'empty') return `<span>${d.name}: 0 rows</span>`;
+                return `<span class="ok">${d.name}: ${d.count} rows${d.teamCount !== undefined ? ' (' + d.teamCount + ' team)' : ''}</span>`;
+            }).join('');
+            debugBar.innerHTML = debugHTML + `<span style="color:#94a3b8">| Total team: ${teamData.length}</span>`;
+            debugBar.classList.remove('hidden');
+
             // Populate category dropdown
             const cats = [...new Set(teamData.map(d => d._category).filter(c => c && c !== 'Uncategorized'))].sort();
             const catSelect = document.getElementById('categoryFilter');
             catSelect.innerHTML = '<option value="all">All categories</option>' + cats.map(c => `<option value="${c}">${c}</option>`).join('');
 
-            // Show load stats
-            const statsText = sheetStats.map(s => `${s.name}: ${s.count}`).join(' | ');
             const errorText = errors.length > 0 ? ` | Errors: ${errors.join(', ')}` : '';
-            document.getElementById('lastUpdate').textContent = `${statsText}${errorText} • ${new Date().toLocaleTimeString()}`;
-
-            // Show error toast if any sheets failed
-            if (errors.length > 0) {
-                showErrorToast(`Some sheets failed to load: ${errors.join(', ')}`);
-            }
+            document.getElementById('lastUpdate').textContent = `Loaded • ${new Date().toLocaleTimeString()}${errorText}`;
 
             btn.disabled = false;
             btn.innerHTML = `<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg> Refresh`;
 
             renderDashboard();
             applyFilters();
-        }
-
-        function showErrorToast(message) {
-            const existing = document.querySelector('.error-toast');
-            if (existing) existing.remove();
-            const toast = document.createElement('div');
-            toast.className = 'error-toast';
-            toast.textContent = message;
-            document.body.appendChild(toast);
-            setTimeout(() => toast.remove(), 8000);
         }
 
         // ===================== RENDER DASHBOARD =====================
@@ -901,7 +920,7 @@
             }
 
             // Determine columns to show
-            const internalKeys = ['_sheet', '_sheetIndex', '_kamOriginal', '_kamName', '_kamClass', '_raw', '_sheetDisplay', '_dateRaw'];
+            const internalKeys = ['_sheet', '_sheetIndex', '_kamOriginal', '_kamFoundCol', '_raw', '_sheetDisplay', '_dateRaw'];
             const allKeys = new Set();
             filteredData.forEach(row => Object.keys(row._raw).forEach(k => allKeys.add(k)));
             const displayCols = Array.from(allKeys).filter(k => !internalKeys.includes(k) && k !== COL_MAP.kam && k !== COL_MAP.status).slice(0, 6);
