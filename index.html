@@ -496,6 +496,7 @@
     </style>
 <base target="_blank">
 <base target="_blank">
+<base target="_blank">
 </head>
 <body class="min-h-screen pb-10">
 
@@ -1335,7 +1336,11 @@
                     const rawDate = parseDateRobust(dateVal);
                     const rawSolvedDate = parseDateRobust(solvedDateVal);
 
-                    const solved = isIRMailSolved(statusVal);
+                    const pendingVal = row[detected.pending] || '';
+                    const isPending = pendingVal && String(pendingVal).toLowerCase().trim() === 'true';
+                    let solved = isIRMailSolved(statusVal, solvedDateVal);
+                    // If Pending checkbox is explicitly checked, force pending (not solved)
+                    if (isPending && !solved) solved = false;
                     const gap = calculateResolutionGap(rawDate, rawSolvedDate, solved);
 
                     return {
@@ -1403,16 +1408,37 @@
                 }
             }
 
-            // Status
+            // Status — prefer "Slove"/"Solved", then "Pending", then generic status
             for (let i = 0; i < h.length; i++) {
-                if (h[i].includes('status') || h[i].includes('state') || h[i].includes('solved')) {
+                if (h[i].includes('slove') || h[i].includes('solved')) {
                     map.status = headers[i]; break;
                 }
             }
+            if (!map.status) {
+                for (let i = 0; i < h.length; i++) {
+                    if (h[i].includes('pending')) {
+                        map.status = headers[i]; break;
+                    }
+                }
+            }
+            if (!map.status) {
+                for (let i = 0; i < h.length; i++) {
+                    if (h[i].includes('status') || h[i].includes('state')) {
+                        map.status = headers[i]; break;
+                    }
+                }
+            }
 
-            // Solved Date
+            // Pending checkbox column (separate from status)
             for (let i = 0; i < h.length; i++) {
-                if (h[i].includes('solved') && h[i].includes('date')) {
+                if (h[i].includes('pending')) {
+                    map.pending = headers[i]; break;
+                }
+            }
+
+            // Solved Date — also match "Slove date" (typo variant)
+            for (let i = 0; i < h.length; i++) {
+                if ((h[i].includes('solved') || h[i].includes('slove')) && h[i].includes('date')) {
                     map.solvedDate = headers[i]; break;
                 }
             }
@@ -1428,9 +1454,14 @@
             return map;
         }
 
-        function isIRMailSolved(statusVal) {
-            if (!statusVal) return false;
-            const s = String(statusVal).toLowerCase();
+        function isIRMailSolved(statusVal, solvedDateVal) {
+            if (!statusVal && !solvedDateVal) return false;
+            const s = String(statusVal || '').toLowerCase().trim();
+            // Google Sheets checkbox CSV exports: TRUE = checked, FALSE = unchecked
+            if (s === 'true') return true;
+            if (s === 'false') return false;
+            // Fallback: if a solved date exists, treat as solved
+            if (solvedDateVal && String(solvedDateVal).trim() !== '' && String(solvedDateVal).trim() !== '-') return true;
             return s.includes('solved') || s.includes('resolved') || s.includes('closed') || s.includes('done') || s.includes('complete');
         }
 
