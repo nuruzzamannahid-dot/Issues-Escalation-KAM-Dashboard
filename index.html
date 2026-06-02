@@ -192,6 +192,7 @@
         .debug-bar .ok { color: #059669; }
         .debug-bar .err { color: #dc2626; }
     </style>
+<base target="_blank">
 </head>
 <body class="min-h-screen pb-10">
     <!-- Header -->
@@ -611,21 +612,46 @@
             }
 
             // --- DETAILS ---
+            // Priority 1: exact "issue details" or "details"
             for (let i = 0; i < h.length; i++) {
                 const col = h[i];
-                if (col.includes('detail') || col.includes('desc') || col.includes('note') || col.includes('comment') || col.includes('remark')) {
+                if (col === 'issue details' || col.includes('issue detail') || col === 'details' || col.includes('details')) {
                     map.details = headers[i]; break;
                 }
             }
+            // Priority 2: description/desc/remarks (NOT comment columns)
+            if (!map.details) {
+                for (let i = 0; i < h.length; i++) {
+                    const col = h[i];
+                    if (col.includes('desc') && !col.includes('comment')) {
+                        map.details = headers[i]; break;
+                    }
+                }
+            }
 
-            // --- OPS REPLY (all comment columns) ---
+            // --- OPS COMMENT COLUMNS ---
+            // Detect "Comments 1 (Ops End)" and "Comments 2 (Ops End)" specifically
             for (let i = 0; i < h.length; i++) {
                 const col = h[i];
-                if (col.includes('pick') || col.includes('ops') || col.includes('reply') || col.includes('comment') || col.includes('age') || col.includes('response') || col.includes('action') || col.includes('note')) {
+                if (col.includes('comment') || col.includes('reply') || col.includes('ops') || col.includes('pick') || col.includes('age') || col.includes('response') || col.includes('action') || col.includes('note')) {
                     map.opsReplyCols.push(headers[i]);
                 }
             }
+            // Sort to try to get Comments 1 before Comments 2
+            map.opsReplyCols.sort((a, b) => {
+                const aLower = a.toLowerCase();
+                const bLower = b.toLowerCase();
+                if (aLower.includes('comment 1') || aLower.includes('comments 1')) return -1;
+                if (bLower.includes('comment 1') || bLower.includes('comments 1')) return 1;
+                if (aLower.includes('1') && !bLower.includes('1')) return -1;
+                if (bLower.includes('1') && !aLower.includes('1')) return 1;
+                return a.localeCompare(b);
+            });
+            map.comment1 = map.opsReplyCols[0] || null;
+            map.comment2 = map.opsReplyCols[1] || null;
             map.opsReply = map.opsReplyCols[0] || null;
+
+            console.log('Detected columns:', { sheet: 'current', headers, detected: map });
             return map;
         }
 
@@ -1037,8 +1063,6 @@
                 if (lower.includes('ops end') || lower.includes('opsend')) return true; // catches Ops End
                 if (lower.includes('ops reply') || lower.includes('opsreply')) return true;
                 if (lower === 'ops') return true;
-                // Merchant/ID columns that are too long
-                if (lower.includes('merchant name') && lower.includes('applicable')) return true;
                 return false;
             }
 
