@@ -39,7 +39,6 @@
         .chart-container { position: relative; height: 280px; }
         .today-badge { background: #ecfdf5; color: #059669; border: 1px solid #a7f3d0; padding: 4px 12px; border-radius: 8px; font-size: 12px; font-weight: 700; }
 
-        /* Issues Log styles */
         .filter-pill {
             padding: 8px 18px;
             border-radius: 10px;
@@ -167,6 +166,25 @@
             background: #fbbf24;
             border-radius: 2px;
             display: inline-block;
+        }
+        .error-toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #b91c1c;
+            padding: 12px 20px;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: 500;
+            z-index: 100;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            animation: slideIn 0.3s ease-out;
+        }
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
         }
     </style>
 </head>
@@ -412,6 +430,60 @@
         let currentPage = 1;
         const PAGE_SIZE = 50;
 
+        // ===================== ROBUST DATE PARSER =====================
+        function parseDateRobust(val) {
+            if (!val) return null;
+            const str = String(val).trim();
+            if (!str) return null;
+
+            // Try native Date first
+            let d = new Date(str);
+            if (!isNaN(d.getTime())) return d;
+
+            // Handle "6/2/2026 9:53:00" or "6/2/2026"
+            // Try MM/DD/YYYY first (US format common in Google Sheets)
+            const usMatch = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2}):(\d{2}))?/);
+            if (usMatch) {
+                const [, mm, dd, yyyy, hh = 0, min = 0, ss = 0] = usMatch;
+                d = new Date(parseInt(yyyy), parseInt(mm) - 1, parseInt(dd), parseInt(hh), parseInt(min), parseInt(ss));
+                if (!isNaN(d.getTime())) return d;
+            }
+
+            // Try DD/MM/YYYY format
+            const euMatch = str.match(/^(\d{1,2})-(\d{1,2})-(\d{4})(?:\s+(\d{1,2}):(\d{2}):(\d{2}))?/);
+            if (euMatch) {
+                const [, dd, mm, yyyy, hh = 0, min = 0, ss = 0] = euMatch;
+                d = new Date(parseInt(yyyy), parseInt(mm) - 1, parseInt(dd), parseInt(hh), parseInt(min), parseInt(ss));
+                if (!isNaN(d.getTime())) return d;
+            }
+
+            // Try DD-MM-YYYY
+            const euDashMatch = str.match(/^(\d{1,2})-(\d{1,2})-(\d{4})/);
+            if (euDashMatch) {
+                const [, dd, mm, yyyy] = euDashMatch;
+                d = new Date(parseInt(yyyy), parseInt(mm) - 1, parseInt(dd));
+                if (!isNaN(d.getTime())) return d;
+            }
+
+            // Try YYYY-MM-DD
+            const isoMatch = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
+            if (isoMatch) {
+                const [, yyyy, mm, dd] = isoMatch;
+                d = new Date(parseInt(yyyy), parseInt(mm) - 1, parseInt(dd));
+                if (!isNaN(d.getTime())) return d;
+            }
+
+            // Try Google Sheets serial number (e.g., 45000)
+            const serial = parseFloat(str);
+            if (!isNaN(serial) && serial > 30000 && serial < 60000) {
+                // Excel/Google Sheets epoch: Dec 30, 1899
+                d = new Date((serial - 25569) * 86400 * 1000);
+                if (!isNaN(d.getTime())) return d;
+            }
+
+            return null;
+        }
+
         // ===================== DATA FETCHING =====================
         async function fetchCSV(url) {
             const response = await fetch(url, { cache: 'no-store' });
@@ -423,7 +495,6 @@
         function normalizeKAM(val) {
             if (!val) return 'Unknown';
             const clean = String(val).toLowerCase().trim();
-            // Check full value first, then fallback to username-only (before @)
             const base = clean.split('@')[0];
             return KAM_MAP[clean] || KAM_MAP[base] || String(val).toUpperCase();
         }
@@ -485,12 +556,6 @@
             return map;
         }
 
-        function parseDate(val) {
-            if (!val) return null;
-            const d = new Date(val);
-            return isNaN(d.getTime()) ? null : d;
-        }
-
         function isSolved(status) {
             if (!status) return false;
             const s = String(status).toLowerCase();
@@ -503,7 +568,7 @@
             if (s.includes('urgent') || s.includes('critical') || s.includes('high')) return true;
             for (let key of Object.keys(row)) {
                 const val = String(row[key] || '').toLowerCase();
-                if (val.includes('urgent') && key.toLowerCase() !== COL_MAP.status?.toLowerCase()) return true;
+                if (val.includes('urgent') && key.toLowerCase() !== (COL_MAP.status || '').toLowerCase()) return true;
             }
             return false;
         }
@@ -522,15 +587,30 @@
 
             allData = [];
             let errors = [];
+            let sheetStats = [];
 
             for (let i = 0; i < SHEETS.length; i++) {
                 try {
                     const rows = await fetchCSV(SHEETS[i].url);
+                    sheetStats.push({ name: SHEETS[i].displayName, count: rows.length });
+
                     if (rows.length === 0) continue;
 
                     const headers = Object.keys(rows[0]);
                     const detected = detectColumns(headers, rows);
 
+                    // Per-sheet column detection (don't let one sheet's columns break another)
+                    const sheetColMap = {
+                        kam: COL_MAP.kam || detected.kam || headers[0],
+                        status: COL_MAP.status || detected.status,
+                        category: COL_MAP.category || detected.category,
+                        date: COL_MAP.date || detected.date,
+                        irMail: COL_MAP.irMail || detected.irMail,
+                        consignment: COL_MAP.consignment || detected.consignment,
+                        details: COL_MAP.details || detected.details
+                    };
+
+                    // Update global COL_MAP if not set
                     if (!COL_MAP.kam && detected.kam) COL_MAP.kam = detected.kam;
                     if (!COL_MAP.status && detected.status) COL_MAP.status = detected.status;
                     if (!COL_MAP.category && detected.category) COL_MAP.category = detected.category;
@@ -540,12 +620,12 @@
                     if (!COL_MAP.details && detected.details) COL_MAP.details = detected.details;
 
                     rows.forEach(row => {
-                        const kamVal = row[COL_MAP.kam || headers[0]];
+                        const kamVal = row[sheetColMap.kam];
                         const kamName = normalizeKAM(kamVal);
-                        const statusVal = row[COL_MAP.status || ''];
-                        const categoryVal = row[COL_MAP.category || ''];
-                        const dateVal = row[COL_MAP.date || ''];
-                        const irVal = COL_MAP.irMail ? row[COL_MAP.irMail] : '';
+                        const statusVal = row[sheetColMap.status || ''];
+                        const categoryVal = row[sheetColMap.category || ''];
+                        const dateVal = row[sheetColMap.date || ''];
+                        const irVal = sheetColMap.irMail ? row[sheetColMap.irMail] : '';
 
                         allData.push({
                             _kam: kamName,
@@ -554,7 +634,8 @@
                             _solved: isSolved(statusVal),
                             _urgent: isUrgent(statusVal, row),
                             _category: categoryVal ? String(categoryVal).trim() : 'Uncategorized',
-                            _date: parseDate(dateVal),
+                            _date: parseDateRobust(dateVal),
+                            _dateRaw: dateVal,
                             _irMail: isIRMail(irVal),
                             _sheet: SHEETS[i].name,
                             _sheetDisplay: SHEETS[i].displayName,
@@ -562,7 +643,8 @@
                         });
                     });
                 } catch (e) {
-                    errors.push(`${SHEETS[i].name}: ${e.message}`);
+                    errors.push(`${SHEETS[i].displayName}: ${e.message}`);
+                    console.error(`Failed to load ${SHEETS[i].displayName}:`, e);
                 }
             }
 
@@ -573,15 +655,31 @@
             const catSelect = document.getElementById('categoryFilter');
             catSelect.innerHTML = '<option value="all">All categories</option>' + cats.map(c => `<option value="${c}">${c}</option>`).join('');
 
-            document.getElementById('lastUpdate').textContent = errors.length > 0
-                ? `Partial • ${new Date().toLocaleTimeString()}`
-                : `Live • ${new Date().toLocaleTimeString()}`;
+            // Show load stats
+            const statsText = sheetStats.map(s => `${s.name}: ${s.count}`).join(' | ');
+            const errorText = errors.length > 0 ? ` | Errors: ${errors.join(', ')}` : '';
+            document.getElementById('lastUpdate').textContent = `${statsText}${errorText} • ${new Date().toLocaleTimeString()}`;
+
+            // Show error toast if any sheets failed
+            if (errors.length > 0) {
+                showErrorToast(`Some sheets failed to load: ${errors.join(', ')}`);
+            }
 
             btn.disabled = false;
             btn.innerHTML = `<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg> Refresh`;
 
             renderDashboard();
             applyFilters();
+        }
+
+        function showErrorToast(message) {
+            const existing = document.querySelector('.error-toast');
+            if (existing) existing.remove();
+            const toast = document.createElement('div');
+            toast.className = 'error-toast';
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 8000);
         }
 
         // ===================== RENDER DASHBOARD =====================
@@ -796,14 +894,14 @@
 
             if (filteredData.length === 0) {
                 thead.innerHTML = '<th style="width:100%"></th>';
-                tbody.innerHTML = '<tr><td colspan="100" class="empty-state">no issues match.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="100" class="empty-state">No issues match your filters.</td></tr>';
                 document.getElementById('showingText').textContent = 'Showing 0 of 0 issues';
                 document.getElementById('pagination').innerHTML = '';
                 return;
             }
 
             // Determine columns to show
-            const internalKeys = ['_sheet', '_sheetIndex', '_kamOriginal', '_kamName', '_kamClass', '_raw', '_sheetDisplay'];
+            const internalKeys = ['_sheet', '_sheetIndex', '_kamOriginal', '_kamName', '_kamClass', '_raw', '_sheetDisplay', '_dateRaw'];
             const allKeys = new Set();
             filteredData.forEach(row => Object.keys(row._raw).forEach(k => allKeys.add(k)));
             const displayCols = Array.from(allKeys).filter(k => !internalKeys.includes(k) && k !== COL_MAP.kam && k !== COL_MAP.status).slice(0, 6);
