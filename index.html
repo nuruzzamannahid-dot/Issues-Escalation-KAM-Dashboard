@@ -151,7 +151,7 @@
             font-size: 11px;
             font-weight: 600;
         }
-        .ops-picked { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+        /* .ops-picked removed - OPS comment marks as solved */
         .ops-solved { background: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }
         .ops-other { background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }
         .empty-state {
@@ -192,6 +192,7 @@
         .debug-bar .ok { color: #059669; }
         .debug-bar .err { color: #dc2626; }
     </style>
+<base target="_blank">
 </head>
 <body class="min-h-screen pb-10">
     <!-- Header -->
@@ -579,10 +580,17 @@
             return map;
         }
 
-        function isSolved(status) {
-            if (!status) return false;
+        function isSolved(status, opsReply) {
+            if (!status) {
+                // If OPS has commented (opsReply exists), mark as solved
+                if (opsReply && String(opsReply).trim()) return true;
+                return false;
+            }
             const s = String(status).toLowerCase();
-            return s.includes('solved') || s.includes('resolved') || s.includes('closed') || s.includes('done') || s.includes('complete');
+            if (s.includes('solved') || s.includes('resolved') || s.includes('closed') || s.includes('done') || s.includes('complete')) return true;
+            // If OPS has commented, mark as solved regardless of status text
+            if (opsReply && String(opsReply).trim()) return true;
+            return false;
         }
 
         function isUrgent(status, row) {
@@ -602,12 +610,12 @@
             return v.includes('yes') || v.includes('true') || v.includes('1') || v.includes('sent') || v.includes('ir');
         }
 
-        function getOpsReplyStatus(val) {
+        function getOpsReplyStatus(val, isSolvedFlag) {
             if (!val) return { text: '-', class: 'ops-other' };
-            const v = String(val).toLowerCase().trim();
-            if (v.includes('solved')) return { text: String(val).trim(), class: 'ops-solved' };
-            if (v.includes('picked')) return { text: String(val).trim(), class: 'ops-picked' };
-            return { text: String(val).trim(), class: 'ops-other' };
+            const text = String(val).trim();
+            // If issue is solved (either by status or by OPS comment), show as solved badge
+            if (isSolvedFlag) return { text: text, class: 'ops-solved' };
+            return { text: text, class: 'ops-other' };
         }
 
         // ===================== SORT BY DATE DESCENDING =====================
@@ -679,7 +687,7 @@
                             _kamOriginal: kamVal,
                             _kamFoundCol: foundCol,
                             _status: statusVal,
-                            _solved: isSolved(statusVal),
+                            _solved: isSolved(statusVal, opsVal),
                             _urgent: isUrgent(statusVal, row),
                             _category: categoryVal ? String(categoryVal).trim() : 'Uncategorized',
                             _date: parseDateRobust(dateVal),
@@ -965,7 +973,7 @@
                 const kamClass = d._kam === 'AHMED ASIF RASHID' ? 'kam-tag-ahmed' : 'kam-tag-nahid';
                 const kamInitials = d._kam === 'AHMED ASIF RASHID' ? 'AR' : 'NN';
 
-                const opsStatus = getOpsReplyStatus(d._opsReply);
+                const opsStatus = getOpsReplyStatus(d._opsReply, d._solved);
 
                 let cells = '';
                 displayCols.forEach(col => {
