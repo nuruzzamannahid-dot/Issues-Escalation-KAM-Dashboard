@@ -428,7 +428,7 @@
 
         const TARGET_KAMS = ['AHMED ASIF RASHID', 'NURUZZAMAN NAHID'];
 
-        let COL_MAP = { kam: null, status: null, category: null, date: null, irMail: null, consignment: null, details: null, opsReply: null };
+        let COL_MAP = { kam: null, status: null, category: null, date: null, irMail: null, consignment: null, details: null, opsReply: null, opsReplyCols: [] };
         let allData = [];
         let teamData = [];
         let filteredData = [];
@@ -570,26 +570,28 @@
                     map.details = headers[i]; break;
                 }
             }
-            // Detect Ops Reply / Issue Pick Age column
+            // Detect ALL Ops Reply / Comment columns (there may be 2)
+            map.opsReplyCols = [];
             for (let i = 0; i < h.length; i++) {
                 const col = h[i];
-                if (col.includes('pick') || col.includes('ops') || col.includes('reply') || col.includes('age') || col.includes('response') || col.includes('action')) {
-                    map.opsReply = headers[i]; break;
+                if (col.includes('pick') || col.includes('ops') || col.includes('reply') || col.includes('comment') || col.includes('age') || col.includes('response') || col.includes('action') || col.includes('note')) {
+                    map.opsReplyCols.push(headers[i]);
                 }
             }
+            // Backward compat: keep first as primary
+            map.opsReply = map.opsReplyCols[0] || null;
             return map;
         }
 
         function isSolved(status, opsReply) {
-            if (!status) {
-                // If OPS has commented (opsReply exists), mark as solved
-                if (opsReply && String(opsReply).trim()) return true;
-                return false;
+            const hasOpsComment = opsReply && String(opsReply).trim().length > 0 && String(opsReply).trim() !== '-';
+            // If status explicitly says solved
+            if (status) {
+                const s = String(status).toLowerCase();
+                if (s.includes('solved') || s.includes('resolved') || s.includes('closed') || s.includes('done') || s.includes('complete')) return true;
             }
-            const s = String(status).toLowerCase();
-            if (s.includes('solved') || s.includes('resolved') || s.includes('closed') || s.includes('done') || s.includes('complete')) return true;
-            // If OPS has commented, mark as solved regardless of status text
-            if (opsReply && String(opsReply).trim()) return true;
+            // If OPS has commented in any comment column, mark as solved
+            if (hasOpsComment) return true;
             return false;
         }
 
@@ -680,7 +682,20 @@
                         const categoryVal = row[COL_MAP.category || detected.category || ''];
                         const dateVal = row[COL_MAP.date || detected.date || ''];
                         const irVal = (COL_MAP.irMail || detected.irMail) ? row[COL_MAP.irMail || detected.irMail] : '';
-                        const opsVal = (COL_MAP.opsReply || detected.opsReply) ? row[COL_MAP.opsReply || detected.opsReply] : '';
+                        // Check ALL detected ops/comment columns (sheets have 2 comment sections)
+                    const opsCols = (COL_MAP.opsReplyCols && COL_MAP.opsReplyCols.length) ? COL_MAP.opsReplyCols : (detected.opsReplyCols || []);
+                    let opsVal = '';
+                    for (const col of opsCols) {
+                        const v = row[col];
+                        if (v && String(v).trim()) { opsVal = String(v).trim(); break; }
+                    }
+                    // Also update global column map with all detected columns from this sheet
+                    if (detected.opsReplyCols && detected.opsReplyCols.length) {
+                        const existing = new Set(COL_MAP.opsReplyCols || []);
+                        detected.opsReplyCols.forEach(c => existing.add(c));
+                        COL_MAP.opsReplyCols = Array.from(existing);
+                        COL_MAP.opsReply = COL_MAP.opsReplyCols[0] || detected.opsReplyCols[0] || null;
+                    }
 
                         allData.push({
                             _kam: kamName,
