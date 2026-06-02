@@ -400,7 +400,6 @@
 
     <script>
         // ===================== CONFIG =====================
-        // UPDATED URLs - exactly as provided by user
         const SHEETS = [
             { name: 'Sheet 1', displayName: 'ISD', url: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRvcHh_-szyOevlR4V86qiagypaMcBaF-ikwfeMJ-vamXKQBH7jWaIrmajn9VdgE5xm78RN_L30O5_s/pub?output=csv' },
             { name: 'Sheet 2', displayName: 'OSD', url: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSAVNwzXLfSVFu4psJlhz7pqMKtEocVNUKChUbpRaFoXVxSric-zuGESs7GyT0R6DO_sF76RE951c3B/pub?output=csv' },
@@ -451,7 +450,6 @@
                 const [, first, second, yyyy] = altMatch;
                 const firstNum = parseInt(first);
                 const secondNum = parseInt(second);
-                // If first number > 12, it's likely DD/MM/YYYY
                 if (firstNum > 12) {
                     d = new Date(parseInt(yyyy), secondNum - 1, firstNum);
                     if (!isNaN(d.getTime())) return d;
@@ -499,7 +497,6 @@
             return KAM_MAP[clean] || KAM_MAP[base] || String(val).toUpperCase();
         }
 
-        // Try to find KAM value by scanning all columns for known patterns
         function findKAMInRow(row) {
             for (const key of Object.keys(row)) {
                 const val = String(row[key] || '').toLowerCase().trim();
@@ -592,6 +589,20 @@
             return v.includes('yes') || v.includes('true') || v.includes('1') || v.includes('sent') || v.includes('ir');
         }
 
+        // ===================== SORT BY DATE DESCENDING =====================
+        function sortByDateDesc(data) {
+            return data.sort((a, b) => {
+                // Both have dates — compare normally
+                if (a._date && b._date) return b._date - a._date;
+                // Only a has date — a comes first
+                if (a._date && !b._date) return -1;
+                // Only b has date — b comes first
+                if (!a._date && b._date) return 1;
+                // Neither has date — keep original order
+                return 0;
+            });
+        }
+
         // ===================== LOAD DATA =====================
         async function loadAllSheets() {
             const btn = document.getElementById('refreshBtn');
@@ -615,7 +626,6 @@
                     const headers = Object.keys(rows[0]);
                     const detected = detectColumns(headers, rows);
 
-                    // Update global COL_MAP if not set
                     if (!COL_MAP.kam && detected.kam) COL_MAP.kam = detected.kam;
                     if (!COL_MAP.status && detected.status) COL_MAP.status = detected.status;
                     if (!COL_MAP.category && detected.category) COL_MAP.category = detected.category;
@@ -628,12 +638,10 @@
                     let sheetTeamCount = 0;
 
                     rows.forEach(row => {
-                        // Try detected KAM column first, fallback to scanning all columns
                         let kamVal = row[kamCol];
                         let kamName = normalizeKAM(kamVal);
                         let foundCol = kamCol;
 
-                        // If normalized to Unknown, try scanning all columns for known KAMs
                         if (kamName === 'UNKNOWN' || !TARGET_KAMS.includes(kamName)) {
                             const found = findKAMInRow(row);
                             if (found) {
@@ -674,9 +682,13 @@
                 }
             }
 
+            // SORT ALL DATA BY DATE DESCENDING (newest first)
+            allData = sortByDateDesc(allData);
+
+            // Now filter to team members — order is preserved from the sort above
             teamData = allData.filter(d => TARGET_KAMS.includes(d._kam));
 
-            // Show debug info in header
+            // Show debug info
             const debugBar = document.getElementById('debugBar');
             const debugHTML = debugInfo.map(d => {
                 if (d.status === 'error') return `<span class="err">${d.name}: ERROR (${d.error})</span>`;
@@ -902,7 +914,8 @@
             // Sheet filter
             if (sheetFilter !== 'all') data = data.filter(d => d._sheet === sheetFilter);
 
-            filteredData = data;
+            // Sort filtered results by date descending too (so filters don't break the order)
+            filteredData = sortByDateDesc(data);
             currentPage = 1;
             renderTable();
         }
