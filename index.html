@@ -518,8 +518,9 @@
 
         function detectColumns(headers, sampleRows) {
             const h = headers.map(x => x.toLowerCase().trim());
-            const map = { kam: null, status: null, category: null, date: null, irMail: null, consignment: null, details: null, opsReply: null };
+            const map = { kam: null, status: null, category: null, date: null, irMail: null, consignment: null, details: null, opsReply: null, opsReplyCols: [] };
 
+            // --- KAM ---
             for (let i = 0; i < h.length; i++) {
                 const col = h[i];
                 if (col.includes('email') || col.includes('kam') || col.includes('assignee') || col.includes('owner') || col.includes('agent') || col.includes('user')) {
@@ -534,51 +535,97 @@
                     if (map.kam) break;
                 }
             }
+
+            // --- STATUS (detect first, exclude from category) ---
             for (let i = 0; i < h.length; i++) {
                 const col = h[i];
                 if (col.includes('status') || col.includes('state') || col.includes('solve') || col.includes('resolved') || col.includes('closed')) {
                     map.status = headers[i]; break;
                 }
             }
+
+            // --- CATEGORY (must NOT be the same as status column) ---
+            // Priority 1: exact/partial match for category keywords, excluding sub-category
+            const catKeywords = ['category', 'type', 'subject', 'topic', 'reason', 'nature', 'area', 'department', 'group', 'issue'];
+            const catAvoid = ['status', 'state', 'solve', 'resolved', 'closed', 'email', 'kam', 'assignee', 'date', 'time', 'timestamp', 'id', 'consignment', 'cn', 'tracking', 'note', 'comment', 'reply', 'ops'];
+
+            // First pass: prefer columns with "category" but NOT "sub" (main category over sub-category)
             for (let i = 0; i < h.length; i++) {
+                if (headers[i] === map.status) continue;
                 const col = h[i];
-                if (col.includes('category') || col.includes('type') || col.includes('issue') || col.includes('subject') || col.includes('topic') || col.includes('reason')) {
+                const isCat = catKeywords.some(k => col.includes(k));
+                const isAvoid = catAvoid.some(k => col.includes(k));
+                const isMainCat = col.includes('category') && !col.includes('sub');
+                if (isMainCat && !isAvoid) {
                     map.category = headers[i]; break;
                 }
             }
+            // Second pass: any category keyword match
+            if (!map.category) {
+                for (let i = 0; i < h.length; i++) {
+                    if (headers[i] === map.status) continue;
+                    const col = h[i];
+                    const isCat = catKeywords.some(k => col.includes(k));
+                    const isAvoid = catAvoid.some(k => col.includes(k));
+                    if (isCat && !isAvoid) {
+                        map.category = headers[i]; break;
+                    }
+                }
+            }
+            // Fallback: try 'issue'/'problem'/'complaint' with validation
+            if (!map.category) {
+                for (let i = 0; i < h.length; i++) {
+                    if (headers[i] === map.status) continue;
+                    const col = h[i];
+                    if (col.includes('issue') || col.includes('problem') || col.includes('complaint')) {
+                        const samples = sampleRows.slice(0, 5).map(r => String(r[headers[i]] || '').toLowerCase().trim());
+                        const statusLike = samples.filter(v => v === 'pending' || v === 'solved' || v === 'urgent' || v === 'closed' || v === 'resolved' || v === 'done' || v === 'open').length;
+                        if (statusLike < 3) {
+                            map.category = headers[i]; break;
+                        }
+                    }
+                }
+            }
+
+            // --- DATE ---
             for (let i = 0; i < h.length; i++) {
                 const col = h[i];
                 if (col.includes('date') || col.includes('created') || col.includes('time') || col.includes('timestamp')) {
                     map.date = headers[i]; break;
                 }
             }
+
+            // --- IR MAIL ---
             for (let i = 0; i < h.length; i++) {
                 const col = h[i];
                 if (col.includes('ir') || col.includes('mail') || col.includes('email_sent') || col.includes('notification')) {
                     map.irMail = headers[i]; break;
                 }
             }
+
+            // --- CONSIGNMENT ---
             for (let i = 0; i < h.length; i++) {
                 const col = h[i];
                 if (col.includes('consignment') || col.includes('id') || col.includes('cn') || col.includes('tracking') || col.includes('number') || col.includes('code')) {
                     map.consignment = headers[i]; break;
                 }
             }
+
+            // --- DETAILS ---
             for (let i = 0; i < h.length; i++) {
                 const col = h[i];
                 if (col.includes('detail') || col.includes('desc') || col.includes('note') || col.includes('comment') || col.includes('remark')) {
                     map.details = headers[i]; break;
                 }
             }
-            // Detect ALL Ops Reply / Comment columns (there may be 2)
-            map.opsReplyCols = [];
+
+            // --- OPS REPLY (all comment columns) ---
             for (let i = 0; i < h.length; i++) {
                 const col = h[i];
                 if (col.includes('pick') || col.includes('ops') || col.includes('reply') || col.includes('comment') || col.includes('age') || col.includes('response') || col.includes('action') || col.includes('note')) {
                     map.opsReplyCols.push(headers[i]);
                 }
             }
-            // Backward compat: keep first as primary
             map.opsReply = map.opsReplyCols[0] || null;
             return map;
         }
@@ -653,16 +700,20 @@
                     const headers = Object.keys(rows[0]);
                     const detected = detectColumns(headers, rows);
 
-                    if (!COL_MAP.kam && detected.kam) COL_MAP.kam = detected.kam;
-                    if (!COL_MAP.status && detected.status) COL_MAP.status = detected.status;
-                    if (!COL_MAP.category && detected.category) COL_MAP.category = detected.category;
-                    if (!COL_MAP.date && detected.date) COL_MAP.date = detected.date;
-                    if (!COL_MAP.irMail && detected.irMail) COL_MAP.irMail = detected.irMail;
-                    if (!COL_MAP.consignment && detected.consignment) COL_MAP.consignment = detected.consignment;
-                    if (!COL_MAP.details && detected.details) COL_MAP.details = detected.details;
-                    if (!COL_MAP.opsReply && detected.opsReply) COL_MAP.opsReply = detected.opsReply;
+                    // Use per-sheet detection, NOT global COL_MAP, to avoid cross-sheet poisoning
+                    const sheetColMap = {
+                        kam: detected.kam || COL_MAP.kam,
+                        status: detected.status || COL_MAP.status,
+                        category: detected.category, // per-sheet only, never global
+                        date: detected.date || COL_MAP.date,
+                        irMail: detected.irMail || COL_MAP.irMail,
+                        consignment: detected.consignment || COL_MAP.consignment,
+                        details: detected.details || COL_MAP.details,
+                        opsReplyCols: detected.opsReplyCols || [],
+                        opsReply: detected.opsReply
+                    };
 
-                    const kamCol = COL_MAP.kam || detected.kam || headers[0];
+                    const kamCol = sheetColMap.kam || headers[0];
                     let sheetTeamCount = 0;
 
                     rows.forEach(row => {
@@ -678,23 +729,22 @@
                             }
                         }
 
-                        const statusVal = row[COL_MAP.status || detected.status || ''];
-                        const categoryVal = row[COL_MAP.category || detected.category || ''];
-                        const dateVal = row[COL_MAP.date || detected.date || ''];
-                        const irVal = (COL_MAP.irMail || detected.irMail) ? row[COL_MAP.irMail || detected.irMail] : '';
+                        const statusVal = row[sheetColMap.status || ''];
+                        const categoryVal = row[sheetColMap.category || ''];
+                        const dateVal = row[sheetColMap.date || ''];
+                        const irVal = sheetColMap.irMail ? row[sheetColMap.irMail] : '';
                         // Check ALL detected ops/comment columns (sheets have 2 comment sections)
-                    const opsCols = (COL_MAP.opsReplyCols && COL_MAP.opsReplyCols.length) ? COL_MAP.opsReplyCols : (detected.opsReplyCols || []);
+                    const opsCols = sheetColMap.opsReplyCols || [];
                     let opsVal = '';
                     for (const col of opsCols) {
                         const v = row[col];
                         if (v && String(v).trim()) { opsVal = String(v).trim(); break; }
                     }
-                    // Also update global column map with all detected columns from this sheet
+                    // Accumulate ops reply columns globally for Settings modal
                     if (detected.opsReplyCols && detected.opsReplyCols.length) {
                         const existing = new Set(COL_MAP.opsReplyCols || []);
                         detected.opsReplyCols.forEach(c => existing.add(c));
                         COL_MAP.opsReplyCols = Array.from(existing);
-                        COL_MAP.opsReply = COL_MAP.opsReplyCols[0] || detected.opsReplyCols[0] || null;
                     }
 
                         allData.push({
@@ -717,7 +767,7 @@
                         if (TARGET_KAMS.includes(kamName)) sheetTeamCount++;
                     });
 
-                    debugInfo.push({ name: SHEETS[i].displayName, count: rowCount, teamCount: sheetTeamCount, status: 'ok' });
+                    debugInfo.push({ name: SHEETS[i].displayName, count: rowCount, teamCount: sheetTeamCount, status: 'ok', cols: { cat: sheetColMap.category, stat: sheetColMap.status } });
                 } catch (e) {
                     errors.push(`${SHEETS[i].displayName}: ${e.message}`);
                     debugInfo.push({ name: SHEETS[i].displayName, count: 0, status: 'error', error: e.message });
@@ -732,7 +782,7 @@
             const debugHTML = debugInfo.map(d => {
                 if (d.status === 'error') return `<span class="err">${d.name}: ERROR (${d.error})</span>`;
                 if (d.status === 'empty') return `<span>${d.name}: 0 rows</span>`;
-                return `<span class="ok">${d.name}: ${d.count} rows${d.teamCount !== undefined ? ' (' + d.teamCount + ' team)' : ''}</span>`;
+                return `<span class="ok">${d.name}: ${d.count} rows${d.teamCount !== undefined ? ' (' + d.teamCount + ' team)' : ''}${d.cols ? ' [cat:'+(d.cols.cat||'none')+']' : ''}</span>`;
             }).join('');
             debugBar.innerHTML = debugHTML + `<span style="color:#94a3b8">| Total team: ${teamData.length}</span>`;
             debugBar.classList.remove('hidden');
