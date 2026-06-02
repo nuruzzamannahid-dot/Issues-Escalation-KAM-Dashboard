@@ -1014,7 +1014,40 @@
             const internalKeys = ['_sheet', '_sheetIndex', '_kamOriginal', '_kamFoundCol', '_raw', '_sheetDisplay', '_dateRaw'];
             const allKeys = new Set();
             filteredData.forEach(row => Object.keys(row._raw).forEach(k => allKeys.add(k)));
-            const displayCols = Array.from(allKeys).filter(k => !internalKeys.includes(k) && k !== COL_MAP.kam && k !== COL_MAP.status && k !== COL_MAP.opsReply).slice(0, 5);
+
+            // Columns to exclude from display
+            const excludeCols = new Set([...internalKeys, COL_MAP.kam, COL_MAP.status, COL_MAP.opsReply]);
+            // Also exclude email/address columns
+            allKeys.forEach(k => {
+                const lower = k.toLowerCase();
+                if (lower.includes('email') || lower.includes('mail') || lower.includes('address') || lower.includes('e-mail')) {
+                    excludeCols.add(k);
+                }
+            });
+
+            let displayCols = Array.from(allKeys).filter(k => !excludeCols.has(k));
+
+            // Prioritize "Issue Details" or similar detail/description columns first
+            const detailKeywords = ['issue detail', 'details', 'detail', 'description', 'desc', 'remarks', 'notes', 'comment'];
+            const priorityCols = [];
+            const otherCols = [];
+            for (const col of displayCols) {
+                const lower = col.toLowerCase();
+                if (detailKeywords.some(kw => lower.includes(kw))) {
+                    priorityCols.push(col);
+                } else {
+                    otherCols.push(col);
+                }
+            }
+            // Sort priority: exact "Issue Details" first, then other matches
+            priorityCols.sort((a, b) => {
+                const aLower = a.toLowerCase();
+                const bLower = b.toLowerCase();
+                if (aLower.includes('issue detail')) return -1;
+                if (bLower.includes('issue detail')) return 1;
+                return a.length - b.length;
+            });
+            displayCols = [...priorityCols, ...otherCols].slice(0, 5);
 
             // Header with Ops Reply column
             let headerHTML = '<th style="width:40px"></th><th>KAM</th><th>Status</th>';
