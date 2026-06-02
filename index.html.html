@@ -1,0 +1,911 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Carrybee Issue Tracker Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Inter', sans-serif; }
+        body { background: #f0f4f8; }
+        .card { background: white; border-radius: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.04); }
+        .card-hover { transition: all 0.25s ease; }
+        .card-hover:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,0.08); }
+        .summary-card { border-top: 4px solid; }
+        .border-blue { border-color: #3b82f6; }
+        .border-green { border-color: #10b981; }
+        .border-amber { border-color: #f59e0b; }
+        .border-purple { border-color: #8b5cf6; }
+        .border-rose { border-color: #f43f5e; }
+        .avatar { width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; color: white; }
+        .avatar-ahmed { background: linear-gradient(135deg, #3b82f6, #2563eb); }
+        .avatar-nahid { background: linear-gradient(135deg, #10b981, #059669); }
+        .badge { padding: 4px 12px; border-radius: 8px; font-size: 12px; font-weight: 600; }
+        .badge-pink { background: #fce7f3; color: #be185d; border: 1px solid #fbcfe8; }
+        .stat-box { background: #f8fafc; border-radius: 12px; padding: 16px; text-align: center; }
+        .category-pill { background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 8px; padding: 6px 12px; font-size: 12px; color: #475569; font-weight: 500; }
+        .urgent-bar { background: linear-gradient(90deg, #fef3c7, #fffbeb); border: 1px solid #fde68a; border-radius: 10px; padding: 12px 16px; display: flex; align-items: center; gap: 8px; color: #b45309; font-size: 13px; font-weight: 600; }
+        .tab-btn { padding: 6px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; border: 1px solid #e2e8f0; background: white; color: #64748b; cursor: pointer; transition: all 0.2s; }
+        .tab-btn.active { background: #eff6ff; color: #3b82f6; border-color: #bfdbfe; }
+        .pulse-dot { width: 8px; height: 8px; border-radius: 50%; background: #10b981; animation: pulse 2s infinite; }
+        @keyframes pulse { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.5; transform: scale(0.8); } }
+        .loading-shimmer { background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: 8px; }
+        @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+        .fade-in { animation: fadeIn 0.4s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        .chart-container { position: relative; height: 280px; }
+        .today-badge { background: #ecfdf5; color: #059669; border: 1px solid #a7f3d0; padding: 4px 12px; border-radius: 8px; font-size: 12px; font-weight: 700; }
+
+        /* Issues Log styles */
+        .filter-pill {
+            padding: 8px 18px;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid #e2e8f0;
+            background: white;
+            color: #64748b;
+        }
+        .filter-pill.active {
+            background: #ecfdf5;
+            color: #059669;
+            border-color: #a7f3d0;
+            box-shadow: 0 0 0 3px rgba(16,185,129,0.1);
+        }
+        .filter-pill:hover:not(.active) {
+            background: #f8fafc;
+            border-color: #cbd5e1;
+        }
+        .search-input {
+            background: #f1f5f9;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 10px 14px;
+            font-size: 13px;
+            color: #475569;
+            width: 100%;
+            outline: none;
+            transition: all 0.2s;
+        }
+        .search-input:focus {
+            border-color: #3b82f6;
+            background: white;
+            box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
+        }
+        .search-input::placeholder { color: #94a3b8; }
+        .dropdown-select {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 10px 14px;
+            font-size: 13px;
+            color: #475569;
+            outline: none;
+            cursor: pointer;
+            min-width: 140px;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            padding-right: 32px;
+        }
+        .dropdown-select:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
+        }
+        .issues-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+        .issues-table th {
+            padding: 12px 16px;
+            text-align: left;
+            font-size: 11px;
+            font-weight: 700;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            border-bottom: 1px solid #f1f5f9;
+            background: #fafbfc;
+        }
+        .issues-table td {
+            padding: 14px 16px;
+            font-size: 13px;
+            color: #334155;
+            border-bottom: 1px solid #f8fafc;
+        }
+        .issues-table tr:hover td {
+            background: #f8fafc;
+        }
+        .kam-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .kam-tag-ahmed { background: #eff6ff; color: #1d4ed8; }
+        .kam-tag-nahid { background: #ecfdf5; color: #047857; }
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        .status-solved { background: #10b981; }
+        .status-pending { background: #f59e0b; }
+        .status-urgent { background: #f43f5e; }
+        .empty-state {
+            padding: 60px 20px;
+            text-align: center;
+            color: #94a3b8;
+            font-size: 14px;
+            letter-spacing: 0.05em;
+        }
+        .section-title {
+            font-size: 12px;
+            font-weight: 800;
+            color: #10b981;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .section-title::before {
+            content: '';
+            width: 14px;
+            height: 14px;
+            background: #fbbf24;
+            border-radius: 2px;
+            display: inline-block;
+        }
+    </style>
+</head>
+<body class="min-h-screen pb-10">
+    <!-- Header -->
+    <header class="bg-white border-b border-slate-200 px-6 py-4 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center text-white font-bold text-sm">📋</div>
+                <div>
+                    <h1 class="text-lg font-bold text-slate-800 tracking-wide" style="letter-spacing: 0.15em; font-size: 13px;">ISSUE TRACKER</h1>
+                </div>
+            </div>
+            <div class="flex items-center gap-4">
+                <div class="flex items-center gap-2">
+                    <span class="pulse-dot"></span>
+                    <span id="lastUpdate" class="text-xs text-slate-500 font-medium">Loading...</span>
+                </div>
+                <button onclick="refreshAll()" id="refreshBtn" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg transition-colors flex items-center gap-2">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                    Refresh
+                </button>
+                <button onclick="openSettings()" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-semibold rounded-lg transition-colors">
+                    ⚙️ Settings
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-6 py-6 space-y-6">
+        <!-- Summary Cards -->
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4" id="summaryCards">
+            <div class="card summary-card border-blue p-5 card-hover">
+                <div class="text-xs text-slate-500 font-semibold uppercase tracking-wider mb-2">Total Issues</div>
+                <div class="loading-shimmer h-10 w-20"></div>
+            </div>
+            <div class="card summary-card border-green p-5 card-hover">
+                <div class="text-xs text-slate-500 font-semibold uppercase tracking-wider mb-2">Solved</div>
+                <div class="loading-shimmer h-10 w-20"></div>
+            </div>
+            <div class="card summary-card border-amber p-5 card-hover">
+                <div class="text-xs text-slate-500 font-semibold uppercase tracking-wider mb-2">Solve Ratio</div>
+                <div class="loading-shimmer h-10 w-20"></div>
+            </div>
+            <div class="card summary-card border-purple p-5 card-hover">
+                <div class="text-xs text-slate-500 font-semibold uppercase tracking-wider mb-2">IR Mails</div>
+                <div class="loading-shimmer h-10 w-20"></div>
+            </div>
+            <div class="card summary-card border-rose p-5 card-hover">
+                <div class="text-xs text-slate-500 font-semibold uppercase tracking-wider mb-2">Urgent</div>
+                <div class="loading-shimmer h-10 w-20"></div>
+            </div>
+        </div>
+
+        <!-- KAM Cards -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-5" id="kamCards">
+            <!-- Ahmed Card -->
+            <div class="card p-6 card-hover fade-in">
+                <div class="flex items-center justify-between mb-5">
+                    <div class="flex items-center gap-4">
+                        <div class="avatar avatar-ahmed">AA</div>
+                        <div>
+                            <h3 class="font-bold text-slate-800 text-base">Ahmed Asif Rashid</h3>
+                            <p class="text-xs text-slate-400 mt-0.5">ASSISTANT MANAGER · CL-88026</p>
+                        </div>
+                    </div>
+                    <span class="badge badge-pink" id="ahmedRatio">--%</span>
+                </div>
+                <div class="grid grid-cols-4 gap-3 mb-5">
+                    <div class="stat-box"><div class="text-2xl font-bold text-blue-600" id="ahmedTotal">--</div><div class="text-xs text-slate-400 mt-1 font-medium">TOTAL</div></div>
+                    <div class="stat-box"><div class="text-2xl font-bold text-emerald-600" id="ahmedSolved">--</div><div class="text-xs text-slate-400 mt-1 font-medium">SOLVED</div></div>
+                    <div class="stat-box"><div class="text-2xl font-bold text-amber-500" id="ahmedPending">--</div><div class="text-xs text-slate-400 mt-1 font-medium">PENDING</div></div>
+                    <div class="stat-box"><div class="text-2xl font-bold text-purple-600" id="ahmedIR">--</div><div class="text-xs text-slate-400 mt-1 font-medium">IR MAILS</div></div>
+                </div>
+                <div class="mb-3">
+                    <div class="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-2">Top Categories</div>
+                    <div class="flex flex-wrap gap-2" id="ahmedCategories">
+                        <div class="loading-shimmer h-6 w-24"></div>
+                        <div class="loading-shimmer h-6 w-28"></div>
+                    </div>
+                </div>
+                <div class="urgent-bar" id="ahmedUrgent" style="display:none">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"></path></svg>
+                    <span>-- urgent issues</span>
+                </div>
+            </div>
+
+            <!-- Nahid Card -->
+            <div class="card p-6 card-hover fade-in">
+                <div class="flex items-center justify-between mb-5">
+                    <div class="flex items-center gap-4">
+                        <div class="avatar avatar-nahid">NN</div>
+                        <div>
+                            <h3 class="font-bold text-slate-800 text-base">Nuruzzaman Nahid</h3>
+                            <p class="text-xs text-slate-400 mt-0.5">ASSOCIATE · CL-84175</p>
+                        </div>
+                    </div>
+                    <span class="badge badge-pink" id="nahidRatio">--%</span>
+                </div>
+                <div class="grid grid-cols-4 gap-3 mb-5">
+                    <div class="stat-box"><div class="text-2xl font-bold text-blue-600" id="nahidTotal">--</div><div class="text-xs text-slate-400 mt-1 font-medium">TOTAL</div></div>
+                    <div class="stat-box"><div class="text-2xl font-bold text-emerald-600" id="nahidSolved">--</div><div class="text-xs text-slate-400 mt-1 font-medium">SOLVED</div></div>
+                    <div class="stat-box"><div class="text-2xl font-bold text-amber-500" id="nahidPending">--</div><div class="text-xs text-slate-400 mt-1 font-medium">PENDING</div></div>
+                    <div class="stat-box"><div class="text-2xl font-bold text-purple-600" id="nahidIR">--</div><div class="text-xs text-slate-400 mt-1 font-medium">IR MAILS</div></div>
+                </div>
+                <div class="mb-3">
+                    <div class="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-2">Top Categories</div>
+                    <div class="flex flex-wrap gap-2" id="nahidCategories">
+                        <div class="loading-shimmer h-6 w-24"></div>
+                        <div class="loading-shimmer h-6 w-28"></div>
+                    </div>
+                </div>
+                <div class="urgent-bar" id="nahidUrgent" style="display:none">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"></path></svg>
+                    <span>-- urgent issues</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Issues by Category Chart -->
+        <div class="card p-6">
+            <h3 class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4">Issues by Category</h3>
+            <div class="chart-container"><canvas id="categoryChart"></canvas></div>
+        </div>
+
+        <!-- Daily Issues Chart -->
+        <div class="card p-6">
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center gap-3">
+                    <h3 class="text-xs font-bold text-slate-500 uppercase tracking-widest">Daily Issues — Last 7D</h3>
+                    <span class="today-badge" id="todayCount">TODAY: 0</span>
+                </div>
+                <div class="flex gap-2">
+                    <button class="tab-btn active" onclick="setPeriod('7d', this)">7D</button>
+                    <button class="tab-btn" onclick="setPeriod('30d', this)">30D</button>
+                    <button class="tab-btn" onclick="setPeriod('all', this)">ALL</button>
+                    <button class="tab-btn" onclick="setPeriod('member', this)">PER MEMBER</button>
+                </div>
+            </div>
+            <div class="chart-container"><canvas id="dailyChart"></canvas></div>
+        </div>
+
+        <!-- ISSUES LOG SECTION -->
+        <div class="card p-6">
+            <div class="section-title mb-5">Issues Log</div>
+
+            <!-- Filters Row -->
+            <div class="flex flex-col lg:flex-row gap-3 mb-4">
+                <div class="flex-1">
+                    <input type="text" id="searchInput" placeholder="Search consignment, details, category..." class="search-input" oninput="applyFilters()">
+                </div>
+                <div class="flex gap-2 flex-wrap">
+                    <select id="dateFilter" class="dropdown-select" onchange="applyFilters()">
+                        <option value="all">All dates</option>
+                        <option value="today">Today</option>
+                        <option value="week">This week</option>
+                        <option value="month">This month</option>
+                    </select>
+                    <select id="categoryFilter" class="dropdown-select" onchange="applyFilters()">
+                        <option value="all">All categories</option>
+                    </select>
+                    <select id="kamFilter" class="dropdown-select" onchange="applyFilters()">
+                        <option value="all">All KAMs</option>
+                        <option value="AHMED ASIF RASHID">Ahmed Asif Rashid</option>
+                        <option value="NURUZZAMAN NAHID">Nuruzzaman Nahid</option>
+                    </select>
+                    <select id="sheetFilter" class="dropdown-select" onchange="applyFilters()">
+                        <option value="all">All Tabs</option>
+                        <option value="Sheet 1">ISD</option>
+                        <option value="Sheet 2">OSD</option>
+                        <option value="Sheet 3">Central</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Filter Pills -->
+            <div class="flex gap-2 mb-4 flex-wrap">
+                <button class="filter-pill active" id="pill-all" onclick="setPillFilter('all')">All</button>
+                <button class="filter-pill" id="pill-ahmed" onclick="setPillFilter('ahmed')">Ahmed Asif Rashid</button>
+                <button class="filter-pill" id="pill-nahid" onclick="setPillFilter('nahid')">Nuruzzaman Nahid</button>
+                <button class="filter-pill" id="pill-ir" onclick="setPillFilter('ir')">IR mails only</button>
+            </div>
+
+            <!-- Table -->
+            <div class="overflow-x-auto">
+                <table class="issues-table" id="issuesTable">
+                    <thead>
+                        <tr id="tableHeader">
+                            <th>Loading...</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                        <tr><td colspan="100" class="empty-state">Loading data...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div id="tableFooter" class="flex items-center justify-between mt-4 pt-4 border-t border-slate-100">
+                <span class="text-xs text-slate-400" id="showingText">Showing 0 of 0 issues</span>
+                <div class="flex gap-2" id="pagination"></div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl p-6 max-w-lg w-full shadow-2xl">
+            <h3 class="text-lg font-bold text-slate-800 mb-1">Column Settings</h3>
+            <p class="text-sm text-slate-500 mb-5">Map your sheet columns to dashboard fields</p>
+            <div id="settingsContent" class="space-y-4 mb-6"></div>
+            <div class="flex justify-end gap-3">
+                <button onclick="closeSettings()" class="px-4 py-2 text-sm text-slate-500 hover:text-slate-800 font-medium transition-colors">Cancel</button>
+                <button onclick="saveSettings()" class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors">Save & Reload</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ===================== CONFIG =====================
+        const SHEETS = [
+            { name: 'Sheet 1', displayName: 'ISD', url: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRvcHh_-szyOevlR4V86qiagypaMcBaF-ikwfeMJ-vamXKQBH7jWaIrmajn9VdgE5xm78RN_L30O5_s/pub?gid=966376107&single=true&output=csv' },
+            { name: 'Sheet 2', displayName: 'OSD', url: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSAVNwzXLfSVFu4psJlhz7pqMKtEocVNUKChUbpRaFoXVxSric-zuGESs7GyT0R6DO_sF76RE951c3B/pub?gid=0&single=true&output=csv' },
+            { name: 'Sheet 3', displayName: 'Central', url: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRsO79-0XIgKVkMKaIPjkBCp-npePr9WxH8LCX3jcPslWC4PlP4Qsa0qalr6FQuBZGmPsiLnkt2uv2S/pub?gid=0&single=true&output=csv' }
+        ];
+
+        const KAM_MAP = {
+            'ahmed.asif@carrybee.com': 'AHMED ASIF RASHID',
+            'nuruzzaman.nahid@carrybee.com': 'NURUZZAMAN NAHID'
+        };
+
+        const TARGET_KAMS = ['AHMED ASIF RASHID', 'NURUZZAMAN NAHID'];
+
+        let COL_MAP = { kam: null, status: null, category: null, date: null, irMail: null, consignment: null, details: null };
+        let allData = [];
+        let teamData = [];
+        let filteredData = [];
+        let categoryChart = null;
+        let dailyChart = null;
+        let currentPeriod = '7d';
+        let currentPill = 'all';
+        let currentPage = 1;
+        const PAGE_SIZE = 50;
+
+        // ===================== DATA FETCHING =====================
+        async function fetchCSV(url) {
+            const response = await fetch(url, { cache: 'no-store' });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const text = await response.text();
+            return Papa.parse(text, { header: true, skipEmptyLines: true }).data;
+        }
+
+        function normalizeKAM(val) {
+            if (!val) return 'Unknown';
+            const clean = String(val).toLowerCase().trim();
+            return KAM_MAP[clean] || String(val).toUpperCase();
+        }
+
+        function detectColumns(headers, sampleRows) {
+            const h = headers.map(x => x.toLowerCase().trim());
+            const map = { kam: null, status: null, category: null, date: null, irMail: null, consignment: null, details: null };
+
+            for (let i = 0; i < h.length; i++) {
+                const col = h[i];
+                if (col.includes('email') || col.includes('kam') || col.includes('assignee') || col.includes('owner') || col.includes('agent') || col.includes('user')) {
+                    map.kam = headers[i]; break;
+                }
+            }
+            if (!map.kam) {
+                for (let i = 0; i < h.length; i++) {
+                    for (let row of sampleRows.slice(0, 5)) {
+                        if (String(row[headers[i]] || '').includes('@')) { map.kam = headers[i]; break; }
+                    }
+                    if (map.kam) break;
+                }
+            }
+            for (let i = 0; i < h.length; i++) {
+                const col = h[i];
+                if (col.includes('status') || col.includes('state') || col.includes('solve') || col.includes('resolved') || col.includes('closed')) {
+                    map.status = headers[i]; break;
+                }
+            }
+            for (let i = 0; i < h.length; i++) {
+                const col = h[i];
+                if (col.includes('category') || col.includes('type') || col.includes('issue') || col.includes('subject') || col.includes('topic') || col.includes('reason')) {
+                    map.category = headers[i]; break;
+                }
+            }
+            for (let i = 0; i < h.length; i++) {
+                const col = h[i];
+                if (col.includes('date') || col.includes('created') || col.includes('time') || col.includes('timestamp')) {
+                    map.date = headers[i]; break;
+                }
+            }
+            for (let i = 0; i < h.length; i++) {
+                const col = h[i];
+                if (col.includes('ir') || col.includes('mail') || col.includes('email_sent') || col.includes('notification')) {
+                    map.irMail = headers[i]; break;
+                }
+            }
+            for (let i = 0; i < h.length; i++) {
+                const col = h[i];
+                if (col.includes('consignment') || col.includes('id') || col.includes('cn') || col.includes('tracking') || col.includes('number') || col.includes('code')) {
+                    map.consignment = headers[i]; break;
+                }
+            }
+            for (let i = 0; i < h.length; i++) {
+                const col = h[i];
+                if (col.includes('detail') || col.includes('desc') || col.includes('note') || col.includes('comment') || col.includes('remark')) {
+                    map.details = headers[i]; break;
+                }
+            }
+            return map;
+        }
+
+        function parseDate(val) {
+            if (!val) return null;
+            const d = new Date(val);
+            return isNaN(d.getTime()) ? null : d;
+        }
+
+        function isSolved(status) {
+            if (!status) return false;
+            const s = String(status).toLowerCase();
+            return s.includes('solved') || s.includes('resolved') || s.includes('closed') || s.includes('done') || s.includes('complete');
+        }
+
+        function isUrgent(status, row) {
+            if (!status) return false;
+            const s = String(status).toLowerCase();
+            if (s.includes('urgent') || s.includes('critical') || s.includes('high')) return true;
+            for (let key of Object.keys(row)) {
+                const val = String(row[key] || '').toLowerCase();
+                if (val.includes('urgent') && key.toLowerCase() !== COL_MAP.status?.toLowerCase()) return true;
+            }
+            return false;
+        }
+
+        function isIRMail(val) {
+            if (!val) return false;
+            const v = String(val).toLowerCase();
+            return v.includes('yes') || v.includes('true') || v.includes('1') || v.includes('sent') || v.includes('ir');
+        }
+
+        // ===================== LOAD DATA =====================
+        async function loadAllSheets() {
+            const btn = document.getElementById('refreshBtn');
+            btn.disabled = true;
+            btn.innerHTML = `<svg class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Loading...`;
+
+            allData = [];
+            let errors = [];
+
+            for (let i = 0; i < SHEETS.length; i++) {
+                try {
+                    const rows = await fetchCSV(SHEETS[i].url);
+                    if (rows.length === 0) continue;
+
+                    const headers = Object.keys(rows[0]);
+                    const detected = detectColumns(headers, rows);
+
+                    if (!COL_MAP.kam && detected.kam) COL_MAP.kam = detected.kam;
+                    if (!COL_MAP.status && detected.status) COL_MAP.status = detected.status;
+                    if (!COL_MAP.category && detected.category) COL_MAP.category = detected.category;
+                    if (!COL_MAP.date && detected.date) COL_MAP.date = detected.date;
+                    if (!COL_MAP.irMail && detected.irMail) COL_MAP.irMail = detected.irMail;
+                    if (!COL_MAP.consignment && detected.consignment) COL_MAP.consignment = detected.consignment;
+                    if (!COL_MAP.details && detected.details) COL_MAP.details = detected.details;
+
+                    rows.forEach(row => {
+                        const kamVal = row[COL_MAP.kam || headers[0]];
+                        const kamName = normalizeKAM(kamVal);
+                        const statusVal = row[COL_MAP.status || ''];
+                        const categoryVal = row[COL_MAP.category || ''];
+                        const dateVal = row[COL_MAP.date || ''];
+                        const irVal = COL_MAP.irMail ? row[COL_MAP.irMail] : '';
+
+                        allData.push({
+                            _kam: kamName,
+                            _kamOriginal: kamVal,
+                            _status: statusVal,
+                            _solved: isSolved(statusVal),
+                            _urgent: isUrgent(statusVal, row),
+                            _category: categoryVal ? String(categoryVal).trim() : 'Uncategorized',
+                            _date: parseDate(dateVal),
+                            _irMail: isIRMail(irVal),
+                            _sheet: SHEETS[i].name,
+                            _sheetDisplay: SHEETS[i].displayName,
+                            _raw: row
+                        });
+                    });
+                } catch (e) {
+                    errors.push(`${SHEETS[i].name}: ${e.message}`);
+                }
+            }
+
+            teamData = allData.filter(d => TARGET_KAMS.includes(d._kam));
+
+            // Populate category dropdown
+            const cats = [...new Set(teamData.map(d => d._category).filter(c => c && c !== 'Uncategorized'))].sort();
+            const catSelect = document.getElementById('categoryFilter');
+            catSelect.innerHTML = '<option value="all">All categories</option>' + cats.map(c => `<option value="${c}">${c}</option>`).join('');
+
+            document.getElementById('lastUpdate').textContent = errors.length > 0
+                ? `Partial • ${new Date().toLocaleTimeString()}`
+                : `Live • ${new Date().toLocaleTimeString()}`;
+
+            btn.disabled = false;
+            btn.innerHTML = `<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg> Refresh`;
+
+            renderDashboard();
+            applyFilters();
+        }
+
+        // ===================== RENDER DASHBOARD =====================
+        function renderDashboard() {
+            const ahmedData = teamData.filter(d => d._kam === 'AHMED ASIF RASHID');
+            const nahidData = teamData.filter(d => d._kam === 'NURUZZAMAN NAHID');
+
+            const total = teamData.length;
+            const solved = teamData.filter(d => d._solved).length;
+            const ratio = total > 0 ? Math.round((solved / total) * 100) : 0;
+            const irMails = teamData.filter(d => d._irMail).length;
+            const urgent = teamData.filter(d => d._urgent).length;
+
+            document.getElementById('summaryCards').innerHTML = `
+                <div class="card summary-card border-blue p-5 card-hover fade-in">
+                    <div class="text-xs text-slate-500 font-semibold uppercase tracking-wider mb-2">Total Issues</div>
+                    <div class="text-3xl font-extrabold text-blue-600">${total}</div>
+                </div>
+                <div class="card summary-card border-green p-5 card-hover fade-in">
+                    <div class="text-xs text-slate-500 font-semibold uppercase tracking-wider mb-2">Solved</div>
+                    <div class="text-3xl font-extrabold text-emerald-600">${solved}</div>
+                </div>
+                <div class="card summary-card border-amber p-5 card-hover fade-in">
+                    <div class="text-xs text-slate-500 font-semibold uppercase tracking-wider mb-2">Solve Ratio</div>
+                    <div class="text-3xl font-extrabold text-amber-500">${ratio}%</div>
+                </div>
+                <div class="card summary-card border-purple p-5 card-hover fade-in">
+                    <div class="text-xs text-slate-500 font-semibold uppercase tracking-wider mb-2">IR Mails</div>
+                    <div class="text-3xl font-extrabold text-purple-600">${irMails}</div>
+                </div>
+                <div class="card summary-card border-rose p-5 card-hover fade-in">
+                    <div class="text-xs text-slate-500 font-semibold uppercase tracking-wider mb-2">Urgent</div>
+                    <div class="text-3xl font-extrabold text-rose-500">${urgent}</div>
+                </div>
+            `;
+
+            renderKAMCard('ahmed', ahmedData);
+            renderKAMCard('nahid', nahidData);
+            renderCategoryChart();
+            renderDailyChart();
+        }
+
+        function renderKAMCard(prefix, data) {
+            const total = data.length;
+            const solved = data.filter(d => d._solved).length;
+            const pending = total - solved;
+            const ir = data.filter(d => d._irMail).length;
+            const ratio = total > 0 ? Math.round((solved / total) * 100) : 0;
+            const urgent = data.filter(d => d._urgent).length;
+
+            document.getElementById(`${prefix}Total`).textContent = total;
+            document.getElementById(`${prefix}Solved`).textContent = solved;
+            document.getElementById(`${prefix}Pending`).textContent = pending;
+            document.getElementById(`${prefix}IR`).textContent = ir;
+            document.getElementById(`${prefix}Ratio`).textContent = `${ratio}%`;
+
+            const catCounts = {};
+            data.forEach(d => { if (d._category) catCounts[d._category] = (catCounts[d._category] || 0) + 1; });
+            const topCats = Object.entries(catCounts).sort((a, b) => b[1] - a[1]).slice(0, 3);
+            document.getElementById(`${prefix}Categories`).innerHTML = topCats.length > 0
+                ? topCats.map(([cat, count]) => `<span class="category-pill">${cat} (${count})</span>`).join('')
+                : '<span class="text-xs text-slate-400">No categories found</span>';
+
+            const urgentEl = document.getElementById(`${prefix}Urgent`);
+            if (urgent > 0) {
+                urgentEl.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"></path></svg><span>${urgent} urgent issues</span>`;
+                urgentEl.style.display = 'flex';
+            } else {
+                urgentEl.style.display = 'none';
+            }
+        }
+
+        // ===================== CHARTS =====================
+        function renderCategoryChart() {
+            const catCounts = {};
+            teamData.forEach(d => {
+                const cat = d._category || 'Uncategorized';
+                catCounts[cat] = (catCounts[cat] || 0) + 1;
+            });
+            const labels = Object.keys(catCounts);
+            const values = Object.values(catCounts);
+            const colors = ['#3b82f6', '#10b981', '#f43f5e', '#8b5cf6', '#f59e0b', '#06b6d4', '#84cc16', '#f97316'];
+
+            if (categoryChart) categoryChart.destroy();
+            categoryChart = new Chart(document.getElementById('categoryChart'), {
+                type: 'bar',
+                data: { labels, datasets: [{ label: 'Issues', data: values, backgroundColor: colors.slice(0, labels.length), borderRadius: 8, borderSkipped: false, barThickness: 60 }] },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { position: 'top', labels: { usePointStyle: true, pointStyle: 'circle', padding: 20, font: { size: 12, family: 'Inter' } } } },
+                    scales: {
+                        y: { beginAtZero: true, grid: { color: '#f1f5f9', drawBorder: false }, ticks: { color: '#94a3b8', font: { size: 12, family: 'Inter' } } },
+                        x: { grid: { display: false }, ticks: { color: '#64748b', font: { size: 12, family: 'Inter' } } }
+                    }
+                }
+            });
+        }
+
+        function renderDailyChart() {
+            const today = new Date(); today.setHours(0, 0, 0, 0);
+            let days = 7;
+            if (currentPeriod === '30d') days = 30;
+            if (currentPeriod === 'all') days = 90;
+
+            const labels = [], ahmedPoints = [], nahidPoints = [], allPoints = [];
+            for (let i = days - 1; i >= 0; i--) {
+                const d = new Date(today); d.setDate(d.getDate() - i);
+                labels.push(d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+                const dayStart = new Date(d), dayEnd = new Date(d); dayEnd.setDate(dayEnd.getDate() + 1);
+                const dayIssues = teamData.filter(x => x._date && x._date >= dayStart && x._date < dayEnd);
+                allPoints.push(dayIssues.length);
+                ahmedPoints.push(dayIssues.filter(x => x._kam === 'AHMED ASIF RASHID').length);
+                nahidPoints.push(dayIssues.filter(x => x._kam === 'NURUZZAMAN NAHID').length);
+            }
+
+            document.getElementById('todayCount').textContent = `TODAY: ${teamData.filter(x => x._date && x._date >= today).length}`;
+
+            if (dailyChart) dailyChart.destroy();
+            const datasets = currentPeriod === 'member'
+                ? [
+                    { label: 'Ahmed Asif Rashid', data: ahmedPoints, borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.1)', tension: 0.4, fill: true, pointRadius: 4, pointBackgroundColor: '#3b82f6' },
+                    { label: 'Nuruzzaman Nahid', data: nahidPoints, borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.1)', tension: 0.4, fill: true, pointRadius: 4, pointBackgroundColor: '#10b981' }
+                  ]
+                : [{ label: 'All Members', data: allPoints, borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.08)', tension: 0.4, fill: true, pointRadius: 4, pointBackgroundColor: '#3b82f6', borderWidth: 2 }];
+
+            dailyChart = new Chart(document.getElementById('dailyChart'), {
+                type: 'line',
+                data: { labels, datasets },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { position: 'top', align: 'start', labels: { usePointStyle: true, pointStyle: 'circle', padding: 20, font: { size: 12, family: 'Inter' } } } },
+                    scales: {
+                        y: { beginAtZero: true, grid: { color: '#f1f5f9', drawBorder: false }, ticks: { color: '#94a3b8', font: { size: 12, family: 'Inter' }, stepSize: 1 } },
+                        x: { grid: { display: false }, ticks: { color: '#64748b', font: { size: 11, family: 'Inter' } } }
+                    }
+                }
+            });
+        }
+
+        function setPeriod(period, btn) {
+            currentPeriod = period;
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            renderDailyChart();
+        }
+
+        // ===================== ISSUES LOG FILTERS =====================
+        function setPillFilter(filter) {
+            currentPill = filter;
+            document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
+            document.getElementById(`pill-${filter}`).classList.add('active');
+            applyFilters();
+        }
+
+        function applyFilters() {
+            const search = document.getElementById('searchInput').value.toLowerCase();
+            const dateFilter = document.getElementById('dateFilter').value;
+            const catFilter = document.getElementById('categoryFilter').value;
+            const kamFilter = document.getElementById('kamFilter').value;
+            const sheetFilter = document.getElementById('sheetFilter').value;
+
+            let data = [...teamData];
+
+            // Pill filter
+            if (currentPill === 'ahmed') data = data.filter(d => d._kam === 'AHMED ASIF RASHID');
+            else if (currentPill === 'nahid') data = data.filter(d => d._kam === 'NURUZZAMAN NAHID');
+            else if (currentPill === 'ir') data = data.filter(d => d._irMail);
+
+            // Search
+            if (search) {
+                data = data.filter(d => {
+                    const raw = d._raw;
+                    for (let key of Object.keys(raw)) {
+                        if (String(raw[key] || '').toLowerCase().includes(search)) return true;
+                    }
+                    return false;
+                });
+            }
+
+            // Date filter
+            if (dateFilter !== 'all') {
+                const now = new Date();
+                const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                if (dateFilter === 'today') {
+                    data = data.filter(d => d._date && d._date >= today);
+                } else if (dateFilter === 'week') {
+                    const weekAgo = new Date(today); weekAgo.setDate(weekAgo.getDate() - 7);
+                    data = data.filter(d => d._date && d._date >= weekAgo);
+                } else if (dateFilter === 'month') {
+                    const monthAgo = new Date(today); monthAgo.setDate(monthAgo.getDate() - 30);
+                    data = data.filter(d => d._date && d._date >= monthAgo);
+                }
+            }
+
+            // Category filter
+            if (catFilter !== 'all') data = data.filter(d => d._category === catFilter);
+
+            // KAM dropdown filter
+            if (kamFilter !== 'all') data = data.filter(d => d._kam === kamFilter);
+
+            // Sheet filter
+            if (sheetFilter !== 'all') data = data.filter(d => d._sheet === sheetFilter);
+
+            filteredData = data;
+            currentPage = 1;
+            renderTable();
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('tableBody');
+            const thead = document.getElementById('tableHeader');
+
+            if (filteredData.length === 0) {
+                thead.innerHTML = '<th style="width:100%"></th>';
+                tbody.innerHTML = '<tr><td colspan="100" class="empty-state">no issues match.</td></tr>';
+                document.getElementById('showingText').textContent = 'Showing 0 of 0 issues';
+                document.getElementById('pagination').innerHTML = '';
+                return;
+            }
+
+            // Determine columns to show
+            const internalKeys = ['_sheet', '_sheetIndex', '_kamOriginal', '_kamName', '_kamClass', '_raw', '_sheetDisplay'];
+            const allKeys = new Set();
+            filteredData.forEach(row => Object.keys(row._raw).forEach(k => allKeys.add(k)));
+            const displayCols = Array.from(allKeys).filter(k => !internalKeys.includes(k) && k !== COL_MAP.kam && k !== COL_MAP.status).slice(0, 6);
+
+            // Header
+            let headerHTML = '<th style="width:40px"></th><th>KAM</th><th>Status</th>';
+            displayCols.forEach(col => {
+                headerHTML += `<th>${col}</th>`;
+            });
+            headerHTML += '<th>Sheet</th>';
+            thead.innerHTML = headerHTML;
+
+            // Body
+            const start = (currentPage - 1) * PAGE_SIZE;
+            const end = Math.min(start + PAGE_SIZE, filteredData.length);
+            const pageData = filteredData.slice(start, end);
+
+            const bodyHTML = pageData.map((d, idx) => {
+                let statusDot = 'status-pending';
+                let statusText = 'Pending';
+                if (d._solved) { statusDot = 'status-solved'; statusText = 'Solved'; }
+                else if (d._urgent) { statusDot = 'status-urgent'; statusText = 'Urgent'; }
+
+                const kamClass = d._kam === 'AHMED ASIF RASHID' ? 'kam-tag-ahmed' : 'kam-tag-nahid';
+                const kamInitials = d._kam === 'AHMED ASIF RASHID' ? 'AR' : 'NN';
+
+                let cells = '';
+                displayCols.forEach(col => {
+                    const val = d._raw[col];
+                    cells += `<td>${val !== undefined && val !== null && val !== '' ? val : '-'}</td>`;
+                });
+
+                return `<tr>
+                    <td><span class="text-xs text-slate-400">${start + idx + 1}</span></td>
+                    <td><span class="kam-tag ${kamClass}"><span style="width:18px;height:18px;border-radius:50%;background:${d._kam === 'AHMED ASIF RASHID' ? '#3b82f6' : '#10b981'};color:white;font-size:10px;display:inline-flex;align-items:center;justify-content:center;font-weight:700;">${kamInitials}</span>${d._kam === 'AHMED ASIF RASHID' ? 'Ahmed Asif' : 'Nuruzzaman'}</span></td>
+                    <td><span class="flex items-center gap-2"><span class="status-dot ${statusDot}"></span><span class="text-xs font-medium ${d._solved ? 'text-emerald-600' : d._urgent ? 'text-rose-500' : 'text-amber-500'}">${statusText}</span></span></td>
+                    ${cells}
+                    <td><span class="text-xs px-2 py-1 rounded-md bg-slate-100 text-slate-500 font-medium">${d._sheetDisplay}</span></td>
+                </tr>`;
+            }).join('');
+
+            tbody.innerHTML = bodyHTML;
+
+            // Footer
+            document.getElementById('showingText').textContent = `Showing ${start + 1}-${end} of ${filteredData.length} issues`;
+
+            // Pagination
+            const totalPages = Math.ceil(filteredData.length / PAGE_SIZE);
+            let pagHTML = '';
+            if (totalPages > 1) {
+                pagHTML += `<button onclick="changePage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''} class="px-3 py-1 text-xs rounded-md border border-slate-200 ${currentPage === 1 ? 'text-slate-300' : 'text-slate-600 hover:bg-slate-50'}">Prev</button>`;
+                for (let i = 1; i <= totalPages; i++) {
+                    if (i === 1 || i === totalPages || (i >= currentPage - 1 && i <= currentPage + 1)) {
+                        pagHTML += `<button onclick="changePage(${i})" class="px-3 py-1 text-xs rounded-md ${i === currentPage ? 'bg-blue-600 text-white' : 'border border-slate-200 text-slate-600 hover:bg-slate-50'}">${i}</button>`;
+                    } else if (i === currentPage - 2 || i === currentPage + 2) {
+                        pagHTML += `<span class="px-2 text-xs text-slate-400">...</span>`;
+                    }
+                }
+                pagHTML += `<button onclick="changePage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''} class="px-3 py-1 text-xs rounded-md border border-slate-200 ${currentPage === totalPages ? 'text-slate-300' : 'text-slate-600 hover:bg-slate-50'}">Next</button>`;
+            }
+            document.getElementById('pagination').innerHTML = pagHTML;
+        }
+
+        function changePage(page) {
+            const totalPages = Math.ceil(filteredData.length / PAGE_SIZE);
+            if (page < 1 || page > totalPages) return;
+            currentPage = page;
+            renderTable();
+        }
+
+        // ===================== SETTINGS =====================
+        function openSettings() {
+            const content = `
+                <div><label class="block text-sm font-medium text-slate-700 mb-1">KAM / Email Column</label><input type="text" id="setting-kam" value="${COL_MAP.kam || ''}" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500"></div>
+                <div><label class="block text-sm font-medium text-slate-700 mb-1">Status Column</label><input type="text" id="setting-status" value="${COL_MAP.status || ''}" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500"></div>
+                <div><label class="block text-sm font-medium text-slate-700 mb-1">Category Column</label><input type="text" id="setting-category" value="${COL_MAP.category || ''}" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500"></div>
+                <div><label class="block text-sm font-medium text-slate-700 mb-1">Date Column</label><input type="text" id="setting-date" value="${COL_MAP.date || ''}" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500"></div>
+                <div><label class="block text-sm font-medium text-slate-700 mb-1">IR Mail Column</label><input type="text" id="setting-ir" value="${COL_MAP.irMail || ''}" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500"></div>
+            `;
+            document.getElementById('settingsContent').innerHTML = content;
+            document.getElementById('settingsModal').classList.remove('hidden');
+        }
+
+        function closeSettings() {
+            document.getElementById('settingsModal').classList.add('hidden');
+        }
+
+        function saveSettings() {
+            COL_MAP.kam = document.getElementById('setting-kam').value.trim() || null;
+            COL_MAP.status = document.getElementById('setting-status').value.trim() || null;
+            COL_MAP.category = document.getElementById('setting-category').value.trim() || null;
+            COL_MAP.date = document.getElementById('setting-date').value.trim() || null;
+            COL_MAP.irMail = document.getElementById('setting-ir').value.trim() || null;
+            closeSettings();
+            loadAllSheets();
+        }
+
+        function refreshAll() {
+            loadAllSheets();
+        }
+
+        // Auto-refresh every 5 minutes
+        setInterval(refreshAll, 300000);
+
+        // Initial load
+        loadAllSheets();
+    </script>
+</body>
+</html>
