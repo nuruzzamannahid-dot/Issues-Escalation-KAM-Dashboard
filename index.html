@@ -230,6 +230,93 @@
         .theme-toggle.dark .sun-icon { display: none; }
         .theme-toggle.dark .moon-icon { display: block; }
 
+        /* ===== AUTH LOGIN SCREEN ===== */
+        .auth-overlay {
+            position: fixed;
+            inset: 0;
+            background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%);
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .auth-box {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            width: 100%;
+            max-width: 420px;
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
+            animation: authSlide 0.5s ease-out;
+        }
+        @keyframes authSlide {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .auth-logo {
+            width: 56px;
+            height: 56px;
+            border-radius: 14px;
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            margin-bottom: 24px;
+        }
+        .auth-input {
+            width: 100%;
+            padding: 12px 16px;
+            border-radius: 10px;
+            border: 1.5px solid #e2e8f0;
+            font-size: 14px;
+            outline: none;
+            transition: all 0.2s;
+            background: #f8fafc;
+        }
+        .auth-input:focus {
+            border-color: #3b82f6;
+            background: white;
+            box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
+        }
+        .auth-btn {
+            width: 100%;
+            padding: 12px;
+            border-radius: 10px;
+            background: #3b82f6;
+            color: white;
+            font-weight: 700;
+            font-size: 14px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .auth-btn:hover { background: #2563eb; }
+        .auth-btn:active { transform: scale(0.98); }
+        .auth-error {
+            color: #dc2626;
+            font-size: 13px;
+            font-weight: 600;
+            text-align: center;
+            margin-top: 12px;
+            display: none;
+        }
+        .auth-remember {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            color: #64748b;
+            cursor: pointer;
+        }
+        .auth-remember input {
+            width: 16px;
+            height: 16px;
+            accent-color: #3b82f6;
+            cursor: pointer;
+        }
+
         /* Dark Mode Variables */
         :root {
             --bg-body: #f0f4f8;
@@ -339,216 +426,256 @@
 <base target="_blank">
 </head>
 <body class="min-h-screen pb-10">
-    <!-- Header -->
-    <header class="bg-white border-b border-slate-200 px-6 py-4 sticky top-0 z-50">
-        <div class="max-w-7xl mx-auto flex items-center justify-between">
-            <div class="flex items-center gap-3">
-                <div class="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center text-white font-bold text-sm">📋</div>
+
+    <!-- AUTHENTICATION OVERLAY -->
+    <div id="authOverlay" class="auth-overlay">
+        <div class="auth-box">
+            <div class="auth-logo">📋</div>
+            <h2 class="text-xl font-bold text-slate-800 mb-1">Issue Tracker</h2>
+            <p class="text-sm text-slate-500 mb-6">Authorized personnel only. Please sign in to continue.</p>
+            
+            <div class="space-y-4">
                 <div>
-                    <h1 class="text-lg font-bold text-slate-800 tracking-wide" style="letter-spacing: 0.15em; font-size: 13px;">ISSUE TRACKER</h1>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1.5">Username</label>
+                    <input type="text" id="authUser" class="auth-input" placeholder="Enter username" autocomplete="off">
                 </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1.5">Password</label>
+                    <input type="password" id="authPass" class="auth-input" placeholder="Enter password" onkeydown="if(event.key==='Enter')doLogin()">
+                </div>
+                <div class="flex items-center justify-between">
+                    <label class="auth-remember">
+                        <input type="checkbox" id="authRemember">
+                        <span>Keep me signed in</span>
+                    </label>
+                </div>
+                <button onclick="doLogin()" class="auth-btn">Sign In</button>
+                <div id="authError" class="auth-error">Invalid username or password</div>
             </div>
-            <div class="flex items-center gap-4">
-                <div class="flex items-center gap-2">
-                    <span class="pulse-dot"></span>
-                    <span id="lastUpdate" class="text-xs text-slate-500 font-medium">Loading...</span>
-                </div>
-                <button onclick="refreshAll()" id="refreshBtn" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg transition-colors flex items-center gap-2">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
-                    Refresh
-                </button>
-                <button onclick="openSettings()" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-semibold rounded-lg transition-colors">
-                    ⚙️ Settings
-                </button>
-                
-                <!-- Dark Mode Toggle -->
-                <div class="theme-toggle" id="themeToggle" onclick="toggleDarkMode()" title="Toggle Dark Mode">
-                    <div class="toggle-knob">
-                        <span class="sun-icon">☀️</span>
-                        <span class="moon-icon">🌙</span>
-                    </div>
-                </div>
+            
+            <div class="mt-6 pt-4 border-t border-slate-100 text-center">
+                <p class="text-xs text-slate-400">© Carrybee Operations</p>
             </div>
         </div>
-        <div class="max-w-7xl mx-auto mt-2">
-            <div id="debugBar" class="debug-bar hidden"></div>
-        </div>
-    </header>
+    </div>
 
-    <!-- Main Content -->
-    <main class="max-w-7xl mx-auto px-6 py-6 space-y-6">
-        <!-- Summary Cards -->
-        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4" id="summaryCards">
-            <div class="card summary-card border-blue p-5 card-hover">
-                <div class="text-xs text-slate-500 font-semibold uppercase tracking-wider mb-2">Total Issues</div>
-                <div class="loading-shimmer h-10 w-20"></div>
-            </div>
-            <div class="card summary-card border-green p-5 card-hover">
-                <div class="text-xs text-slate-500 font-semibold uppercase tracking-wider mb-2">Solved</div>
-                <div class="loading-shimmer h-10 w-20"></div>
-            </div>
-            <div class="card summary-card border-amber p-5 card-hover">
-                <div class="text-xs text-slate-500 font-semibold uppercase tracking-wider mb-2">Solve Ratio</div>
-                <div class="loading-shimmer h-10 w-20"></div>
-            </div>
-            <div class="card summary-card border-purple p-5 card-hover">
-                <div class="text-xs text-slate-500 font-semibold uppercase tracking-wider mb-2">IR Mails</div>
-                <div class="loading-shimmer h-10 w-20"></div>
-            </div>
-            <div class="card summary-card border-rose p-5 card-hover">
-                <div class="text-xs text-slate-500 font-semibold uppercase tracking-wider mb-2">Urgent</div>
-                <div class="loading-shimmer h-10 w-20"></div>
-            </div>
-        </div>
-
-        <!-- KAM Cards -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-5" id="kamCards">
-            <!-- Ahmed Card -->
-            <div class="card p-6 card-hover fade-in">
-                <div class="flex items-center justify-between mb-5">
-                    <div class="flex items-center gap-4">
-                        <div class="avatar avatar-ahmed">AA</div>
-                        <div>
-                            <h3 class="font-bold text-slate-800 text-base">Ahmed Asif Rashid</h3>
-                            <p class="text-xs text-slate-400 mt-0.5">ASSISTANT MANAGER · CL-88026</p>
-                        </div>
-                    </div>
-                    <span class="badge badge-pink" id="ahmedRatio">--%</span>
-                </div>
-                <div class="grid grid-cols-4 gap-3 mb-5">
-                    <div class="stat-box"><div class="text-2xl font-bold text-blue-600" id="ahmedTotal">--</div><div class="text-xs text-slate-400 mt-1 font-medium">TOTAL</div></div>
-                    <div class="stat-box"><div class="text-2xl font-bold text-emerald-600" id="ahmedSolved">--</div><div class="text-xs text-slate-400 mt-1 font-medium">SOLVED</div></div>
-                    <div class="stat-box"><div class="text-2xl font-bold text-amber-500" id="ahmedPending">--</div><div class="text-xs text-slate-400 mt-1 font-medium">PENDING</div></div>
-                    <div class="stat-box"><div class="text-2xl font-bold text-purple-600" id="ahmedIR">--</div><div class="text-xs text-slate-400 mt-1 font-medium">IR MAILS</div></div>
-                </div>
-                <div class="mb-3">
-                    <div class="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-2">Top Categories</div>
-                    <div class="flex flex-wrap gap-2" id="ahmedCategories">
-                        <div class="loading-shimmer h-6 w-24"></div>
-                        <div class="loading-shimmer h-6 w-28"></div>
-                    </div>
-                </div>
-                <div class="urgent-bar" id="ahmedUrgent" style="display:none">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"></path></svg>
-                    <span>-- urgent issues</span>
-                </div>
-            </div>
-
-            <!-- Nahid Card -->
-            <div class="card p-6 card-hover fade-in">
-                <div class="flex items-center justify-between mb-5">
-                    <div class="flex items-center gap-4">
-                        <div class="avatar avatar-nahid">NN</div>
-                        <div>
-                            <h3 class="font-bold text-slate-800 text-base">Nuruzzaman Nahid</h3>
-                            <p class="text-xs text-slate-400 mt-0.5">ASSOCIATE · CL-84175</p>
-                        </div>
-                    </div>
-                    <span class="badge badge-pink" id="nahidRatio">--%</span>
-                </div>
-                <div class="grid grid-cols-4 gap-3 mb-5">
-                    <div class="stat-box"><div class="text-2xl font-bold text-blue-600" id="nahidTotal">--</div><div class="text-xs text-slate-400 mt-1 font-medium">TOTAL</div></div>
-                    <div class="stat-box"><div class="text-2xl font-bold text-emerald-600" id="nahidSolved">--</div><div class="text-xs text-slate-400 mt-1 font-medium">SOLVED</div></div>
-                    <div class="stat-box"><div class="text-2xl font-bold text-amber-500" id="nahidPending">--</div><div class="text-xs text-slate-400 mt-1 font-medium">PENDING</div></div>
-                    <div class="stat-box"><div class="text-2xl font-bold text-purple-600" id="nahidIR">--</div><div class="text-xs text-slate-400 mt-1 font-medium">IR MAILS</div></div>
-                </div>
-                <div class="mb-3">
-                    <div class="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-2">Top Categories</div>
-                    <div class="flex flex-wrap gap-2" id="nahidCategories">
-                        <div class="loading-shimmer h-6 w-24"></div>
-                        <div class="loading-shimmer h-6 w-28"></div>
-                    </div>
-                </div>
-                <div class="urgent-bar" id="nahidUrgent" style="display:none">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"></path></svg>
-                    <span>-- urgent issues</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- Issues by Category Chart -->
-        <div class="card p-6">
-            <h3 class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4">Issues by Category</h3>
-            <div class="chart-container"><canvas id="categoryChart"></canvas></div>
-        </div>
-
-        <!-- Daily Issues Chart -->
-        <div class="card p-6">
-            <div class="flex items-center justify-between mb-4">
+    <!-- DASHBOARD (hidden until auth) -->
+    <div id="appContent" style="display:none">
+        <!-- Header -->
+        <header class="bg-white border-b border-slate-200 px-6 py-4 sticky top-0 z-50">
+            <div class="max-w-7xl mx-auto flex items-center justify-between">
                 <div class="flex items-center gap-3">
-                    <h3 class="text-xs font-bold text-slate-500 uppercase tracking-widest">Daily Issues — Last 7D</h3>
-                    <span class="today-badge" id="todayCount">TODAY: 0</span>
+                    <div class="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center text-white font-bold text-sm">📋</div>
+                    <div>
+                        <h1 class="text-lg font-bold text-slate-800 tracking-wide" style="letter-spacing: 0.15em; font-size: 13px;">ISSUE TRACKER</h1>
+                    </div>
                 </div>
-                <div class="flex gap-2">
-                    <button class="tab-btn active" onclick="setPeriod('7d', this)">7D</button>
-                    <button class="tab-btn" onclick="setPeriod('30d', this)">30D</button>
-                    <button class="tab-btn" onclick="setPeriod('all', this)">ALL</button>
-                    <button class="tab-btn" onclick="setPeriod('member', this)">PER MEMBER</button>
-                </div>
-            </div>
-            <div class="chart-container"><canvas id="dailyChart"></canvas></div>
-        </div>
-
-        <!-- ISSUES LOG SECTION -->
-        <div class="card p-6">
-            <div class="section-title mb-5">Issues Log</div>
-
-            <!-- Filters Row -->
-            <div class="flex flex-col lg:flex-row gap-3 mb-4">
-                <div class="flex-1">
-                    <input type="text" id="searchInput" placeholder="Search consignment, details, category..." class="search-input" oninput="applyFilters()">
-                </div>
-                <div class="flex gap-2 flex-wrap">
-                    <select id="dateFilter" class="dropdown-select" onchange="applyFilters()">
-                        <option value="all">All dates</option>
-                        <option value="today">Today</option>
-                        <option value="week">This week</option>
-                        <option value="month">This month</option>
-                    </select>
-                    <select id="categoryFilter" class="dropdown-select" onchange="applyFilters()">
-                        <option value="all">All categories</option>
-                    </select>
-                    <select id="kamFilter" class="dropdown-select" onchange="applyFilters()">
-                        <option value="all">All KAMs</option>
-                        <option value="AHMED ASIF RASHID">Ahmed Asif Rashid</option>
-                        <option value="NURUZZAMAN NAHID">Nuruzzaman Nahid</option>
-                    </select>
-                    <select id="sheetFilter" class="dropdown-select" onchange="applyFilters()">
-                        <option value="all">All Tabs</option>
-                        <option value="Sheet 1">ISD</option>
-                        <option value="Sheet 2">OSD</option>
-                        <option value="Sheet 3">Central</option>
-                    </select>
+                <div class="flex items-center gap-4">
+                    <div class="flex items-center gap-2">
+                        <span class="pulse-dot"></span>
+                        <span id="lastUpdate" class="text-xs text-slate-500 font-medium">Loading...</span>
+                    </div>
+                    <button onclick="refreshAll()" id="refreshBtn" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg transition-colors flex items-center gap-2">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                        Refresh
+                    </button>
+                    <button onclick="openSettings()" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-semibold rounded-lg transition-colors">
+                        ⚙️ Settings
+                    </button>
+                    <button onclick="doLogout()" class="px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                        Logout
+                    </button>
+                    
+                    <!-- Dark Mode Toggle -->
+                    <div class="theme-toggle" id="themeToggle" onclick="toggleDarkMode()" title="Toggle Dark Mode">
+                        <div class="toggle-knob">
+                            <span class="sun-icon">☀️</span>
+                            <span class="moon-icon">🌙</span>
+                        </div>
+                    </div>
                 </div>
             </div>
+            <div class="max-w-7xl mx-auto mt-2">
+                <div id="debugBar" class="debug-bar hidden"></div>
+            </div>
+        </header>
 
-            <!-- Filter Pills -->
-            <div class="flex gap-2 mb-4 flex-wrap">
-                <button class="filter-pill active" id="pill-all" onclick="setPillFilter('all')">All</button>
-                <button class="filter-pill" id="pill-ahmed" onclick="setPillFilter('ahmed')">Ahmed Asif Rashid</button>
-                <button class="filter-pill" id="pill-nahid" onclick="setPillFilter('nahid')">Nuruzzaman Nahid</button>
-                <button class="filter-pill" id="pill-ir" onclick="setPillFilter('ir')">IR mails only</button>
+        <!-- Main Content -->
+        <main class="max-w-7xl mx-auto px-6 py-6 space-y-6">
+            <!-- Summary Cards -->
+            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4" id="summaryCards">
+                <div class="card summary-card border-blue p-5 card-hover">
+                    <div class="text-xs text-slate-500 font-semibold uppercase tracking-wider mb-2">Total Issues</div>
+                    <div class="loading-shimmer h-10 w-20"></div>
+                </div>
+                <div class="card summary-card border-green p-5 card-hover">
+                    <div class="text-xs text-slate-500 font-semibold uppercase tracking-wider mb-2">Solved</div>
+                    <div class="loading-shimmer h-10 w-20"></div>
+                </div>
+                <div class="card summary-card border-amber p-5 card-hover">
+                    <div class="text-xs text-slate-500 font-semibold uppercase tracking-wider mb-2">Solve Ratio</div>
+                    <div class="loading-shimmer h-10 w-20"></div>
+                </div>
+                <div class="card summary-card border-purple p-5 card-hover">
+                    <div class="text-xs text-slate-500 font-semibold uppercase tracking-wider mb-2">IR Mails</div>
+                    <div class="loading-shimmer h-10 w-20"></div>
+                </div>
+                <div class="card summary-card border-rose p-5 card-hover">
+                    <div class="text-xs text-slate-500 font-semibold uppercase tracking-wider mb-2">Urgent</div>
+                    <div class="loading-shimmer h-10 w-20"></div>
+                </div>
             </div>
 
-            <!-- Table -->
-            <div class="overflow-x-auto">
-                <table class="issues-table" id="issuesTable">
-                    <thead>
-                        <tr id="tableHeader">
-                            <th>Loading...</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tableBody">
-                        <tr><td colspan="100" class="empty-state">Loading data...</td></tr>
-                    </tbody>
-                </table>
+            <!-- KAM Cards -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-5" id="kamCards">
+                <!-- Ahmed Card -->
+                <div class="card p-6 card-hover fade-in">
+                    <div class="flex items-center justify-between mb-5">
+                        <div class="flex items-center gap-4">
+                            <div class="avatar avatar-ahmed">AA</div>
+                            <div>
+                                <h3 class="font-bold text-slate-800 text-base">Ahmed Asif Rashid</h3>
+                                <p class="text-xs text-slate-400 mt-0.5">ASSISTANT MANAGER · CL-86026</p>
+                            </div>
+                        </div>
+                        <span class="badge badge-pink" id="ahmedRatio">--%</span>
+                    </div>
+                    <div class="grid grid-cols-4 gap-3 mb-5">
+                        <div class="stat-box"><div class="text-2xl font-bold text-blue-600" id="ahmedTotal">--</div><div class="text-xs text-slate-400 mt-1 font-medium">TOTAL</div></div>
+                        <div class="stat-box"><div class="text-2xl font-bold text-emerald-600" id="ahmedSolved">--</div><div class="text-xs text-slate-400 mt-1 font-medium">SOLVED</div></div>
+                        <div class="stat-box"><div class="text-2xl font-bold text-amber-500" id="ahmedPending">--</div><div class="text-xs text-slate-400 mt-1 font-medium">PENDING</div></div>
+                        <div class="stat-box"><div class="text-2xl font-bold text-purple-600" id="ahmedIR">--</div><div class="text-xs text-slate-400 mt-1 font-medium">IR MAILS</div></div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-2">Top Categories</div>
+                        <div class="flex flex-wrap gap-2" id="ahmedCategories">
+                            <div class="loading-shimmer h-6 w-24"></div>
+                            <div class="loading-shimmer h-6 w-28"></div>
+                        </div>
+                    </div>
+                    <div class="urgent-bar" id="ahmedUrgent" style="display:none">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"></path></svg>
+                        <span>-- urgent issues</span>
+                    </div>
+                </div>
+
+                <!-- Nahid Card -->
+                <div class="card p-6 card-hover fade-in">
+                    <div class="flex items-center justify-between mb-5">
+                        <div class="flex items-center gap-4">
+                            <div class="avatar avatar-nahid">NN</div>
+                            <div>
+                                <h3 class="font-bold text-slate-800 text-base">Nuruzzaman Nahid</h3>
+                                <p class="text-xs text-slate-400 mt-0.5">ASSOCIATE · CL-84175</p>
+                            </div>
+                        </div>
+                        <span class="badge badge-pink" id="nahidRatio">--%</span>
+                    </div>
+                    <div class="grid grid-cols-4 gap-3 mb-5">
+                        <div class="stat-box"><div class="text-2xl font-bold text-blue-600" id="nahidTotal">--</div><div class="text-xs text-slate-400 mt-1 font-medium">TOTAL</div></div>
+                        <div class="stat-box"><div class="text-2xl font-bold text-emerald-600" id="nahidSolved">--</div><div class="text-xs text-slate-400 mt-1 font-medium">SOLVED</div></div>
+                        <div class="stat-box"><div class="text-2xl font-bold text-amber-500" id="nahidPending">--</div><div class="text-xs text-slate-400 mt-1 font-medium">PENDING</div></div>
+                        <div class="stat-box"><div class="text-2xl font-bold text-purple-600" id="nahidIR">--</div><div class="text-xs text-slate-400 mt-1 font-medium">IR MAILS</div></div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-2">Top Categories</div>
+                        <div class="flex flex-wrap gap-2" id="nahidCategories">
+                            <div class="loading-shimmer h-6 w-24"></div>
+                            <div class="loading-shimmer h-6 w-28"></div>
+                        </div>
+                    </div>
+                    <div class="urgent-bar" id="nahidUrgent" style="display:none">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"></path></svg>
+                        <span>-- urgent issues</span>
+                    </div>
+                </div>
             </div>
-            <div id="tableFooter" class="flex items-center justify-between mt-4 pt-4 border-t border-slate-100">
-                <span class="text-xs text-slate-400" id="showingText">Showing 0 of 0 issues</span>
-                <div class="flex gap-2" id="pagination"></div>
+
+            <!-- Issues by Category Chart -->
+            <div class="card p-6">
+                <h3 class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4">Issues by Category</h3>
+                <div class="chart-container"><canvas id="categoryChart"></canvas></div>
             </div>
-        </div>
-    </main>
+
+            <!-- Daily Issues Chart -->
+            <div class="card p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center gap-3">
+                        <h3 class="text-xs font-bold text-slate-500 uppercase tracking-widest">Daily Issues — Last 7D</h3>
+                        <span class="today-badge" id="todayCount">TODAY: 0</span>
+                    </div>
+                    <div class="flex gap-2">
+                        <button class="tab-btn active" onclick="setPeriod('7d', this)">7D</button>
+                        <button class="tab-btn" onclick="setPeriod('30d', this)">30D</button>
+                        <button class="tab-btn" onclick="setPeriod('all', this)">ALL</button>
+                        <button class="tab-btn" onclick="setPeriod('member', this)">PER MEMBER</button>
+                    </div>
+                </div>
+                <div class="chart-container"><canvas id="dailyChart"></canvas></div>
+            </div>
+
+            <!-- ISSUES LOG SECTION -->
+            <div class="card p-6">
+                <div class="section-title mb-5">Issues Log</div>
+
+                <!-- Filters Row -->
+                <div class="flex flex-col lg:flex-row gap-3 mb-4">
+                    <div class="flex-1">
+                        <input type="text" id="searchInput" placeholder="Search consignment, details, category..." class="search-input" oninput="applyFilters()">
+                    </div>
+                    <div class="flex gap-2 flex-wrap">
+                        <select id="dateFilter" class="dropdown-select" onchange="applyFilters()">
+                            <option value="all">All dates</option>
+                            <option value="today">Today</option>
+                            <option value="week">This week</option>
+                            <option value="month">This month</option>
+                        </select>
+                        <select id="categoryFilter" class="dropdown-select" onchange="applyFilters()">
+                            <option value="all">All categories</option>
+                        </select>
+                        <select id="kamFilter" class="dropdown-select" onchange="applyFilters()">
+                            <option value="all">All KAMs</option>
+                            <option value="AHMED ASIF RASHID">Ahmed Asif Rashid</option>
+                            <option value="NURUZZAMAN NAHID">Nuruzzaman Nahid</option>
+                        </select>
+                        <select id="sheetFilter" class="dropdown-select" onchange="applyFilters()">
+                            <option value="all">All Tabs</option>
+                            <option value="Sheet 1">ISD</option>
+                            <option value="Sheet 2">OSD</option>
+                            <option value="Sheet 3">Central</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Filter Pills -->
+                <div class="flex gap-2 mb-4 flex-wrap">
+                    <button class="filter-pill active" id="pill-all" onclick="setPillFilter('all')">All</button>
+                    <button class="filter-pill" id="pill-ahmed" onclick="setPillFilter('ahmed')">Ahmed Asif Rashid</button>
+                    <button class="filter-pill" id="pill-nahid" onclick="setPillFilter('nahid')">Nuruzzaman Nahid</button>
+                    <button class="filter-pill" id="pill-ir" onclick="setPillFilter('ir')">IR mails only</button>
+                </div>
+
+                <!-- Table -->
+                <div class="overflow-x-auto">
+                    <table class="issues-table" id="issuesTable">
+                        <thead>
+                            <tr id="tableHeader">
+                                <th>Loading...</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tableBody">
+                            <tr><td colspan="100" class="empty-state">Loading data...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div id="tableFooter" class="flex items-center justify-between mt-4 pt-4 border-t border-slate-100">
+                    <span class="text-xs text-slate-400" id="showingText">Showing 0 of 0 issues</span>
+                    <div class="flex gap-2" id="pagination"></div>
+                </div>
+            </div>
+        </main>
+    </div>
 
     <!-- Settings Modal -->
     <div id="settingsModal" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
@@ -564,6 +691,59 @@
     </div>
 
     <script>
+        // ===================== AUTH CONFIG =====================
+        const AUTH_USERS = [
+            { username: 'admin', password: 'carrybee2024' },
+            { username: 'ahmed', password: 'ahmed88026' },
+            { username: 'nahid', password: 'nahid84175' }
+        ];
+        const AUTH_SESSION_KEY = 'carrybee_auth';
+        const AUTH_REMEMBER_KEY = 'carrybee_auth_remember';
+
+        function checkAuth() {
+            const session = sessionStorage.getItem(AUTH_SESSION_KEY);
+            const remember = localStorage.getItem(AUTH_REMEMBER_KEY);
+            if (session || remember) {
+                showApp();
+                return true;
+            }
+            return false;
+        }
+
+        function doLogin() {
+            const user = document.getElementById('authUser').value.trim();
+            const pass = document.getElementById('authPass').value.trim();
+            const remember = document.getElementById('authRemember').checked;
+            const errorEl = document.getElementById('authError');
+
+            const valid = AUTH_USERS.some(u => u.username === user && u.password === pass);
+            if (!valid) {
+                errorEl.style.display = 'block';
+                document.getElementById('authPass').value = '';
+                document.getElementById('authPass').focus();
+                return;
+            }
+
+            errorEl.style.display = 'none';
+            sessionStorage.setItem(AUTH_SESSION_KEY, '1');
+            if (remember) {
+                localStorage.setItem(AUTH_REMEMBER_KEY, '1');
+            }
+            showApp();
+        }
+
+        function doLogout() {
+            sessionStorage.removeItem(AUTH_SESSION_KEY);
+            localStorage.removeItem(AUTH_REMEMBER_KEY);
+            location.reload();
+        }
+
+        function showApp() {
+            document.getElementById('authOverlay').style.display = 'none';
+            document.getElementById('appContent').style.display = 'block';
+            loadAllSheets();
+        }
+
         // ===================== CONFIG =====================
         const SHEETS = [
             { name: 'Sheet 1', displayName: 'ISD', url: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRvcHh_-szyOevlR4V86qiagypaMcBaF-ikwfeMJ-vamXKQBH7jWaIrmajn9VdgE5xm78RN_L30O5_s/pub?output=csv' },
@@ -1320,7 +1500,6 @@
             toggle.classList.toggle('dark', isDark);
             localStorage.setItem('carrybee-dark', isDark ? '1' : '0');
             
-            // Re-render charts with updated colors
             setTimeout(() => {
                 if (categoryChart) { categoryChart.destroy(); renderCategoryChart(); }
                 if (dailyChart) { dailyChart.destroy(); renderDailyChart(); }
@@ -1344,9 +1523,11 @@
             }
         }
 
-        setInterval(refreshAll, 300000);
+        // ===================== INIT =====================
         initTheme();
-        loadAllSheets();
+        if (!checkAuth()) {
+            document.getElementById('authUser').focus();
+        }
     </script>
 </body>
 </html>
