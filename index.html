@@ -2255,6 +2255,13 @@ Remove "${username}"? They can be restored by reloading the page.`;
         if (!checkAuth()) {
             document.getElementById('authUser').focus();
         }
+
+        // Auto-refresh dashboard data every 5 minutes
+        setInterval(() => {
+            if (getCurrentUser()) {
+                refreshAll();
+            }
+        }, 300000);
     </script>
 </body>
 </html>
