@@ -467,6 +467,7 @@
     </style>
 <base target="_blank">
 <base target="_blank">
+<base target="_blank">
 </head>
 <body class="min-h-screen pb-10">
 
@@ -668,9 +669,18 @@
                 <div class="chart-container"><canvas id="dailyChart"></canvas></div>
             </div>
 
-            <!-- ISSUES LOG SECTION -->
+            <!-- 📧 IR MAIL FEEDBACK TRACKER SECTION -->
             <div class="card p-6">
-                <div class="section-title mb-5">Issues Log</div>
+                <div class="flex items-center justify-between mb-5">
+                    <div class="section-title mb-0">📧 IR Mail Feedback Tracker</div>
+                    <div class="text-xs font-semibold text-slate-500 bg-slate-100 px-3 py-1.5 rounded-lg flex items-center gap-2">
+                        <span>Page</span>
+                        <span id="currentPageDisplay" class="text-blue-600 font-bold text-sm">1</span>
+                        <span>of</span>
+                        <span id="totalPagesDisplay" class="text-blue-600 font-bold text-sm">1</span>
+                        <span class="text-slate-400">| 5 mails/page</span>
+                    </div>
+                </div>
 
                 <!-- Filters Row -->
                 <div class="flex flex-col lg:flex-row gap-3 mb-4">
@@ -895,7 +905,7 @@
         let currentPeriod = '7d';
         let currentPill = 'all';
         let currentPage = 1;
-        const PAGE_SIZE = 50;
+        const PAGE_SIZE = 5;
 
         // ===================== ROBUST DATE PARSER =====================
         function parseDateRobust(val) {
@@ -1134,6 +1144,11 @@
 
         function sortByDateDesc(data) {
             return data.sort((a, b) => {
+                // Pending issues first, then solved
+                const aPending = !a._solved ? 1 : 0;
+                const bPending = !b._solved ? 1 : 0;
+                if (aPending !== bPending) return bPending - aPending;
+                // Then by date descending
                 if (a._date && b._date) return b._date - a._date;
                 if (a._date && !b._date) return -1;
                 if (!a._date && b._date) return 1;
@@ -1560,6 +1575,8 @@
             tbody.innerHTML = bodyHTML;
 
             document.getElementById('showingText').textContent = `Showing ${start + 1}-${end} of ${filteredData.length} issues`;
+            document.getElementById('currentPageDisplay').textContent = currentPage;
+            document.getElementById('totalPagesDisplay').textContent = totalPages || 1;
 
             const totalPages = Math.ceil(filteredData.length / PAGE_SIZE);
             let pagHTML = '';
