@@ -1105,7 +1105,7 @@
                             <tbody id="mfTableBody">
                                 <tr><td colspan="100" class="mf-empty">
                                     <div class="mf-empty-icon">📭</div>
-                                    <div>No mail feedback issues found.</div>
+                                    <div>No mail feedback found.</div>
                                 </td></tr>
                             </tbody>
                         </table>
@@ -1342,7 +1342,7 @@
         let categoryChart = null;
         let dailyChart = null;
         let mfCurrentPage = 1;
-        const MF_PAGE_SIZE = 25;
+        const MF_PAGE_SIZE = 5;
         let mfFilteredData = [];
         let currentPeriod = '7d';
         let currentPill = 'all';
@@ -1860,7 +1860,7 @@
 
         // ===================== MAIL FEEDBACK TRACKER =====================
         let mfCurrentPage = 1;
-        const MF_PAGE_SIZE = 25;
+        const MF_PAGE_SIZE = 5;
         let mfFilteredData = [];
 
         function renderMailFeedback() {
@@ -1928,7 +1928,17 @@
 
             if (kamFilter !== 'all') data = data.filter(d => d._kam === kamFilter);
 
-            mfFilteredData = sortByDateDesc(data);
+            // Sort: Pending first (by date desc), then Solved (by date desc)
+            mfFilteredData = data.sort((a, b) => {
+                // Pending comes before Solved
+                if (!a._solved && b._solved) return -1;
+                if (a._solved && !b._solved) return 1;
+                // Within same status, sort by date desc
+                if (a._date && b._date) return b._date - a._date;
+                if (a._date && !b._date) return -1;
+                if (!a._date && b._date) return 1;
+                return 0;
+            });
             mfCurrentPage = 1;
             renderMFTable();
         }
@@ -1948,9 +1958,9 @@
             if (mfFilteredData.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="100" class="mf-empty">
                     <div class="mf-empty-icon">📭</div>
-                    <div>No mail feedback issues found.</div>
+                    <div>No mail feedback found.</div>
                 </td></tr>`;
-                document.getElementById('mfShowingText').textContent = 'Showing 0 of 0 issues';
+                document.getElementById('mfShowingText').textContent = 'Showing 0 of 0 mails';
                 document.getElementById('mfPagination').innerHTML = '';
                 return;
             }
@@ -2020,7 +2030,7 @@
             }).join('');
 
             tbody.innerHTML = bodyHTML;
-            document.getElementById('mfShowingText').textContent = `Showing ${start + 1}-${end} of ${mfFilteredData.length} issues`;
+            document.getElementById('mfShowingText').textContent = `Showing ${start + 1}-${end} of ${mfFilteredData.length} mails`;
 
             const totalPages = Math.ceil(mfFilteredData.length / MF_PAGE_SIZE);
             let pagHTML = '';
@@ -2114,7 +2124,7 @@
             if (filteredData.length === 0) {
                 thead.innerHTML = '<th style="width:100%"></th>';
                 tbody.innerHTML = '<tr><td colspan="100" class="empty-state">No issues match your filters.</td></tr>';
-                document.getElementById('showingText').textContent = 'Showing 0 of 0 issues';
+                document.getElementById('showingText').textContent = 'Showing 0 of 0 mails';
                 document.getElementById('pagination').innerHTML = '';
                 return;
             }
