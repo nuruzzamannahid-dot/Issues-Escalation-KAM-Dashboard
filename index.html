@@ -2,11 +2,8 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-    <meta http-equiv="Pragma" content="no-cache">
-    <meta http-equiv="Expires" content="0">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Carrybee Issue Tracker Dashboard v2.1</title>
+    <title>Carrybee Issue Tracker Dashboard</title>
     <script src="https://cdn.tailwindcss.com?v=2"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
@@ -320,8 +317,154 @@
             cursor: pointer;
         }
 
+        /* Dark Mode Variables */
+        :root {
+            --bg-body: #f0f4f8;
+            --bg-card: #ffffff;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-muted: #94a3b8;
+            --border-color: #e2e8f0;
+            --input-bg: #f1f5f9;
+            --hover-bg: #f8fafc;
+            --badge-bg: #f1f5f9;
+            --stat-bg: #f8fafc;
+            --urgent-bg: linear-gradient(90deg, #fef3c7, #fffbeb);
+            --urgent-border: #fde68a;
+            --urgent-text: #b45309;
+            --table-header-bg: #fafbfc;
+            --table-row-hover: #f8fafc;
+            --debug-bg: #f8fafc;
+            --tab-active-bg: #eff6ff;
+            --tab-active-text: #3b82f6;
+            --tab-active-border: #bfdbfe;
+            --filter-active-bg: #ecfdf5;
+            --filter-active-text: #059669;
+            --filter-active-border: #a7f3d0;
+            --today-bg: #ecfdf5;
+            --today-text: #059669;
+            --today-border: #a7f3d0;
+            --modal-overlay: rgba(0,0,0,0.4);
+            --header-bg: #ffffff;
+            --header-border: #e2e8f0;
+            --toggle-bg: #e2e8f0;
+            --toggle-border: #cbd5e1;
+            --toggle-knob: #ffffff;
+        }
 
+        html.dark {
+            --bg-body: #0f172a;
+            --bg-card: #1e293b;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --border-color: #334155;
+            --input-bg: #334155;
+            --hover-bg: #334155;
+            --badge-bg: #334155;
+            --stat-bg: #1e293b;
+            --urgent-bg: linear-gradient(90deg, #451a03, #78350f);
+            --urgent-border: #92400e;
+            --urgent-text: #fbbf24;
+            --table-header-bg: #1e293b;
+            --table-row-hover: #334155;
+            --debug-bg: #1e293b;
+            --tab-active-bg: #1e3a5f;
+            --tab-active-text: #60a5fa;
+            --tab-active-border: #3b82f6;
+            --filter-active-bg: #064e3b;
+            --filter-active-text: #34d399;
+            --filter-active-border: #059669;
+            --today-bg: #064e3b;
+            --today-text: #34d399;
+            --today-border: #059669;
+            --modal-overlay: rgba(0,0,0,0.7);
+            --header-bg: #1e293b;
+            --header-border: #334155;
+            --toggle-bg: #334155;
+            --toggle-border: #475569;
+            --toggle-knob: #1e293b;
+        }
 
+        body { background: var(--bg-body); transition: background 0.3s ease; }
+        .card { background: var(--bg-card); transition: background 0.3s ease, border-color 0.3s ease; }
+        .summary-card { border-top: 4px solid; }
+        .text-slate-800 { color: var(--text-primary) !important; }
+        .text-slate-700 { color: var(--text-primary) !important; }
+        .text-slate-600 { color: var(--text-secondary) !important; }
+        .text-slate-500 { color: var(--text-muted) !important; }
+        .text-slate-400 { color: var(--text-muted) !important; }
+        .text-slate-300 { color: var(--text-muted) !important; }
+        .border-slate-200 { border-color: var(--border-color) !important; }
+        .border-slate-100 { border-color: var(--border-color) !important; }
+        .bg-slate-100 { background: var(--input-bg) !important; }
+        .bg-slate-50 { background: var(--input-bg) !important; }
+        .bg-white { background: var(--bg-card) !important; }
+        .hover\:bg-slate-50:hover { background: var(--hover-bg) !important; }
+        .hover\:bg-slate-200:hover { background: var(--hover-bg) !important; }
+        .search-input { background: var(--input-bg); border-color: var(--border-color); color: var(--text-secondary); }
+        .search-input:focus { background: var(--bg-card); }
+        .dropdown-select { background: var(--bg-card); border-color: var(--border-color); color: var(--text-secondary); }
+        .filter-pill { background: var(--bg-card); border-color: var(--border-color); color: var(--text-muted); }
+        .filter-pill.active { background: var(--filter-active-bg); color: var(--filter-active-text); border-color: var(--filter-active-border); }
+        .tab-btn { background: var(--bg-card); border-color: var(--border-color); color: var(--text-muted); }
+        .tab-btn.active { background: var(--tab-active-bg); color: var(--tab-active-text); border-color: var(--tab-active-border); }
+        .stat-box { background: var(--stat-bg); }
+        .category-pill { background: var(--badge-bg); border-color: var(--border-color); color: var(--text-secondary); }
+        .urgent-bar { background: var(--urgent-bg); border-color: var(--urgent-border); color: var(--urgent-text); }
+        .issues-table th { background: var(--table-header-bg); border-bottom-color: var(--border-color); color: var(--text-muted); }
+        .issues-table td { border-bottom-color: var(--border-color); color: var(--text-secondary); }
+        .issues-table tr:hover td { background: var(--table-row-hover); }
+        .debug-bar { background: var(--debug-bg); border-color: var(--border-color); }
+        .today-badge { background: var(--today-bg); color: var(--today-text); border-color: var(--today-border); }
+        .empty-state { color: var(--text-muted); }
+        header { background: var(--header-bg) !important; border-color: var(--header-border) !important; transition: background 0.3s ease, border-color 0.3s ease; }
+        #settingsModal > div:first-child { background: var(--modal-overlay); }
+        .theme-toggle { background: var(--toggle-bg); border-color: var(--toggle-border); }
+        .theme-toggle .toggle-knob { background: var(--toggle-knob); }
+
+        /* ===== IR PAGINATION ===== */
+        .ir-page-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 36px;
+            height: 36px;
+            padding: 0 12px;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid var(--border-color);
+            background: var(--bg-card);
+            color: var(--text-secondary);
+        }
+        .ir-page-btn:hover:not(:disabled) {
+            background: var(--hover-bg);
+            border-color: var(--text-muted);
+        }
+        .ir-page-btn.active {
+            background: #3b82f6;
+            color: white;
+            border-color: #3b82f6;
+            box-shadow: 0 2px 8px rgba(59,130,246,0.3);
+        }
+        .ir-page-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+        .ir-page-dots {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 36px;
+            height: 36px;
+            font-size: 13px;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+    
         /* ===== MAIL FEEDBACK TRACKER ===== */
         .mail-feedback-title {
             font-size: 11px;
@@ -377,8 +520,6 @@
         .mf-card-value-amber { color: #f59e0b; }
         .mf-card-value-green { color: #10b981; }
         .mf-card-value-pink { color: #ec4899; }
-
-        /* KAM Mail Card */
         .mf-kam-card {
             background: white;
             border-radius: 16px;
@@ -452,8 +593,6 @@
         }
         .mf-kam-progress-purple { background: linear-gradient(90deg, #8b5cf6, #a78bfa); }
         .mf-kam-progress-green { background: linear-gradient(90deg, #10b981, #34d399); }
-
-        /* Mail Log Table */
         .mf-log-title {
             font-size: 11px;
             font-weight: 800;
@@ -609,8 +748,6 @@
             opacity: 0.4;
             cursor: not-allowed;
         }
-
-        /* Dark mode overrides for mail feedback */
         html.dark .mf-card { background: var(--bg-card); }
         html.dark .mf-kam-card { background: var(--bg-card); }
         html.dark .mf-kam-stat-box { background: var(--stat-bg); }
@@ -626,154 +763,7 @@
         html.dark .mf-pagination-btn:hover:not(:disabled) { background: var(--hover-bg); }
         html.dark .mf-empty { color: var(--text-muted); }
 
-        /* Dark Mode Variables */
-        :root {
-            --bg-body: #f0f4f8;
-            --bg-card: #ffffff;
-            --text-primary: #1e293b;
-            --text-secondary: #64748b;
-            --text-muted: #94a3b8;
-            --border-color: #e2e8f0;
-            --input-bg: #f1f5f9;
-            --hover-bg: #f8fafc;
-            --badge-bg: #f1f5f9;
-            --stat-bg: #f8fafc;
-            --urgent-bg: linear-gradient(90deg, #fef3c7, #fffbeb);
-            --urgent-border: #fde68a;
-            --urgent-text: #b45309;
-            --table-header-bg: #fafbfc;
-            --table-row-hover: #f8fafc;
-            --debug-bg: #f8fafc;
-            --tab-active-bg: #eff6ff;
-            --tab-active-text: #3b82f6;
-            --tab-active-border: #bfdbfe;
-            --filter-active-bg: #ecfdf5;
-            --filter-active-text: #059669;
-            --filter-active-border: #a7f3d0;
-            --today-bg: #ecfdf5;
-            --today-text: #059669;
-            --today-border: #a7f3d0;
-            --modal-overlay: rgba(0,0,0,0.4);
-            --header-bg: #ffffff;
-            --header-border: #e2e8f0;
-            --toggle-bg: #e2e8f0;
-            --toggle-border: #cbd5e1;
-            --toggle-knob: #ffffff;
-        }
-
-        html.dark {
-            --bg-body: #0f172a;
-            --bg-card: #1e293b;
-            --text-primary: #f1f5f9;
-            --text-secondary: #94a3b8;
-            --text-muted: #64748b;
-            --border-color: #334155;
-            --input-bg: #334155;
-            --hover-bg: #334155;
-            --badge-bg: #334155;
-            --stat-bg: #1e293b;
-            --urgent-bg: linear-gradient(90deg, #451a03, #78350f);
-            --urgent-border: #92400e;
-            --urgent-text: #fbbf24;
-            --table-header-bg: #1e293b;
-            --table-row-hover: #334155;
-            --debug-bg: #1e293b;
-            --tab-active-bg: #1e3a5f;
-            --tab-active-text: #60a5fa;
-            --tab-active-border: #3b82f6;
-            --filter-active-bg: #064e3b;
-            --filter-active-text: #34d399;
-            --filter-active-border: #059669;
-            --today-bg: #064e3b;
-            --today-text: #34d399;
-            --today-border: #059669;
-            --modal-overlay: rgba(0,0,0,0.7);
-            --header-bg: #1e293b;
-            --header-border: #334155;
-            --toggle-bg: #334155;
-            --toggle-border: #475569;
-            --toggle-knob: #1e293b;
-        }
-
-        body { background: var(--bg-body); transition: background 0.3s ease; }
-        .card { background: var(--bg-card); transition: background 0.3s ease, border-color 0.3s ease; }
-        .summary-card { border-top: 4px solid; }
-        .text-slate-800 { color: var(--text-primary) !important; }
-        .text-slate-700 { color: var(--text-primary) !important; }
-        .text-slate-600 { color: var(--text-secondary) !important; }
-        .text-slate-500 { color: var(--text-muted) !important; }
-        .text-slate-400 { color: var(--text-muted) !important; }
-        .text-slate-300 { color: var(--text-muted) !important; }
-        .border-slate-200 { border-color: var(--border-color) !important; }
-        .border-slate-100 { border-color: var(--border-color) !important; }
-        .bg-slate-100 { background: var(--input-bg) !important; }
-        .bg-slate-50 { background: var(--input-bg) !important; }
-        .bg-white { background: var(--bg-card) !important; }
-        .hover\:bg-slate-50:hover { background: var(--hover-bg) !important; }
-        .hover\:bg-slate-200:hover { background: var(--hover-bg) !important; }
-        .search-input { background: var(--input-bg); border-color: var(--border-color); color: var(--text-secondary); }
-        .search-input:focus { background: var(--bg-card); }
-        .dropdown-select { background: var(--bg-card); border-color: var(--border-color); color: var(--text-secondary); }
-        .filter-pill { background: var(--bg-card); border-color: var(--border-color); color: var(--text-muted); }
-        .filter-pill.active { background: var(--filter-active-bg); color: var(--filter-active-text); border-color: var(--filter-active-border); }
-        .tab-btn { background: var(--bg-card); border-color: var(--border-color); color: var(--text-muted); }
-        .tab-btn.active { background: var(--tab-active-bg); color: var(--tab-active-text); border-color: var(--tab-active-border); }
-        .stat-box { background: var(--stat-bg); }
-        .category-pill { background: var(--badge-bg); border-color: var(--border-color); color: var(--text-secondary); }
-        .urgent-bar { background: var(--urgent-bg); border-color: var(--urgent-border); color: var(--urgent-text); }
-        .issues-table th { background: var(--table-header-bg); border-bottom-color: var(--border-color); color: var(--text-muted); }
-        .issues-table td { border-bottom-color: var(--border-color); color: var(--text-secondary); }
-        .issues-table tr:hover td { background: var(--table-row-hover); }
-        .debug-bar { background: var(--debug-bg); border-color: var(--border-color); }
-        .today-badge { background: var(--today-bg); color: var(--today-text); border-color: var(--today-border); }
-        .empty-state { color: var(--text-muted); }
-        header { background: var(--header-bg) !important; border-color: var(--header-border) !important; transition: background 0.3s ease, border-color 0.3s ease; }
-        #settingsModal > div:first-child { background: var(--modal-overlay); }
-        .theme-toggle { background: var(--toggle-bg); border-color: var(--toggle-border); }
-        .theme-toggle .toggle-knob { background: var(--toggle-knob); }
-
-        /* ===== IR PAGINATION ===== */
-        .ir-page-btn {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            min-width: 36px;
-            height: 36px;
-            padding: 0 12px;
-            border-radius: 10px;
-            font-size: 13px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-            border: 1px solid var(--border-color);
-            background: var(--bg-card);
-            color: var(--text-secondary);
-        }
-        .ir-page-btn:hover:not(:disabled) {
-            background: var(--hover-bg);
-            border-color: var(--text-muted);
-        }
-        .ir-page-btn.active {
-            background: #3b82f6;
-            color: white;
-            border-color: #3b82f6;
-            box-shadow: 0 2px 8px rgba(59,130,246,0.3);
-        }
-        .ir-page-btn:disabled {
-            opacity: 0.4;
-            cursor: not-allowed;
-        }
-        .ir-page-dots {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            min-width: 36px;
-            height: 36px;
-            font-size: 13px;
-            color: var(--text-muted);
-            font-weight: 600;
-        }
-    </style>
+</style>
 <base target="_blank">
 <base target="_blank">
 <base target="_blank">
@@ -979,7 +969,6 @@
             </div>
 
 
-
             <!-- MAIL FEEDBACK TRACKER SECTION -->
             <div class="card p-6" id="mailFeedbackSection">
                 <div class="mail-feedback-title">Mail Feedback Tracker</div>
@@ -1018,7 +1007,6 @@
 
                 <!-- KAM Cards -->
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-6">
-                    <!-- Ahmed Card -->
                     <div class="mf-kam-card mf-kam-purple">
                         <div class="flex items-center gap-3 mb-5">
                             <div class="mf-kam-avatar mf-kam-avatar-purple">AA</div>
@@ -1043,8 +1031,6 @@
                             <div class="mf-kam-progress-fill mf-kam-progress-purple" id="mfAhmedProgress" style="width: 0%"></div>
                         </div>
                     </div>
-
-                    <!-- Nahid Card -->
                     <div class="mf-kam-card mf-kam-green">
                         <div class="flex items-center gap-3 mb-5">
                             <div class="mf-kam-avatar mf-kam-avatar-green">NN</div>
@@ -1114,7 +1100,7 @@
                         </table>
                     </div>
                     <div class="flex items-center justify-between mt-4 pt-4 border-t border-slate-100">
-                        <span class="text-xs text-slate-400" id="mfShowingText">Showing 0 of 0 issues</span>
+                        <span class="text-xs text-slate-400" id="mfShowingText">Showing 0 of 0 mails</span>
                         <div class="flex gap-2" id="mfPagination"></div>
                     </div>
                 </div>
@@ -1237,9 +1223,6 @@
     </div>
 
     <script>
-        // Version 2.1 - Mail Feedback Tracker with 5-item pagination
-        console.log('%c[Carrybee Dashboard] v2.1 loaded', 'color: #8b5cf6; font-weight: bold; font-size: 14px;');
-
         // ===================== AUTH CONFIG =====================
         const AUTH_USERS = [
             { username: 'admin', password: 'carrybee2024', role: 'admin' },
@@ -1862,208 +1845,6 @@
             });
         }
 
-
-
-        // ===================== MAIL FEEDBACK TRACKER =====================
-        
-
-        function renderMailFeedback() {
-            console.log('[MailFeedback] Rendering, teamData length:', teamData.length);
-            const mfData = teamData.filter(d => d._irMail);
-            console.log('[MailFeedback] IR mail count:', mfData.length);
-            const total = mfData.length;
-            const solved = mfData.filter(d => d._solved).length;
-            const pending = total - solved;
-            const ratio = total > 0 ? Math.round((solved / total) * 100) : 0;
-
-            // Summary cards
-            document.getElementById('mfTotalRaised').textContent = total;
-            document.getElementById('mfPending').textContent = pending;
-            document.getElementById('mfSolved').textContent = solved;
-            document.getElementById('mfSolveRatio').textContent = ratio + '%';
-
-            // Ahmed stats
-            const ahmedData = mfData.filter(d => d._kam === 'AHMED ASIF RASHID');
-            const ahmedTotal = ahmedData.length;
-            const ahmedSolved = ahmedData.filter(d => d._solved).length;
-            const ahmedPending = ahmedTotal - ahmedSolved;
-            const ahmedRatio = ahmedTotal > 0 ? Math.round((ahmedSolved / ahmedTotal) * 100) : 0;
-            document.getElementById('mfAhmedRaised').textContent = ahmedTotal;
-            document.getElementById('mfAhmedPending').textContent = ahmedPending;
-            document.getElementById('mfAhmedSolved').textContent = ahmedSolved;
-            document.getElementById('mfAhmedRatio').textContent = ahmedRatio + '%';
-            document.getElementById('mfAhmedProgress').style.width = ahmedRatio + '%';
-
-            // Nahid stats
-            const nahidData = mfData.filter(d => d._kam === 'NURUZZAMAN NAHID');
-            const nahidTotal = nahidData.length;
-            const nahidSolved = nahidData.filter(d => d._solved).length;
-            const nahidPending = nahidTotal - nahidSolved;
-            const nahidRatio = nahidTotal > 0 ? Math.round((nahidSolved / nahidTotal) * 100) : 0;
-            document.getElementById('mfNahidRaised').textContent = nahidTotal;
-            document.getElementById('mfNahidPending').textContent = nahidPending;
-            document.getElementById('mfNahidSolved').textContent = nahidSolved;
-            document.getElementById('mfNahidRatio').textContent = nahidRatio + '%';
-            document.getElementById('mfNahidProgress').style.width = nahidRatio + '%';
-
-            applyMFFilters();
-        }
-
-        function applyMFFilters() {
-            console.log('[MailFeedback] Applying filters...');
-            const search = document.getElementById('mfSearchInput').value.toLowerCase();
-            const statusFilter = document.getElementById('mfStatusFilter').value;
-            const kamFilter = document.getElementById('mfKAMFilter').value;
-
-            let data = teamData.filter(d => d._irMail);
-
-            if (search) {
-                data = data.filter(d => {
-                    const raw = d._raw;
-                    for (let key of Object.keys(raw)) {
-                        if (String(raw[key] || '').toLowerCase().includes(search)) return true;
-                    }
-                    return false;
-                });
-            }
-
-            if (statusFilter !== 'all') {
-                if (statusFilter === 'solved') data = data.filter(d => d._solved);
-                else if (statusFilter === 'pending') data = data.filter(d => !d._solved && !d._urgent);
-                else if (statusFilter === 'urgent') data = data.filter(d => d._urgent);
-            }
-
-            if (kamFilter !== 'all') data = data.filter(d => d._kam === kamFilter);
-
-            // Sort: Pending first (by date desc), then Solved (by date desc)
-            mfFilteredData = data.sort((a, b) => {
-                // Pending comes before Solved
-                if (!a._solved && b._solved) return -1;
-                if (a._solved && !b._solved) return 1;
-                // Within same status, sort by date desc
-                if (a._date && b._date) return b._date - a._date;
-                if (a._date && !b._date) return -1;
-                if (!a._date && b._date) return 1;
-                return 0;
-            });
-            mfCurrentPage = 1;
-            renderMFTable();
-        }
-
-        function getResolutionGap(issueDate, solvedDate, isSolved) {
-            if (!isSolved || !issueDate) return '-';
-            const end = solvedDate || new Date();
-            const diffMs = end - issueDate;
-            const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-            if (diffDays < 0) return '-';
-            return diffDays + 'd';
-        }
-
-        function renderMFTable() {
-            console.log('[MailFeedback] Rendering table, items:', mfFilteredData.length, 'page:', mfCurrentPage, 'pageSize:', MF_PAGE_SIZE);
-            const tbody = document.getElementById('mfTableBody');
-
-            if (mfFilteredData.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="100" class="mf-empty">
-                    <div class="mf-empty-icon">📭</div>
-                    <div>No mail feedback found.</div>
-                </td></tr>`;
-                document.getElementById('mfShowingText').textContent = 'Showing 0 of 0 mails';
-                document.getElementById('mfPagination').innerHTML = '';
-                return;
-            }
-
-            const start = (mfCurrentPage - 1) * MF_PAGE_SIZE;
-            const end = Math.min(start + MF_PAGE_SIZE, mfFilteredData.length);
-            const pageData = mfFilteredData.slice(start, end);
-
-            const bodyHTML = pageData.map((d, idx) => {
-                let statusClass = 'mf-status-pending';
-                let statusText = 'Pending';
-                let statusIcon = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>';
-                if (d._solved) {
-                    statusClass = 'mf-status-solved';
-                    statusText = 'Solved';
-                    statusIcon = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>';
-                } else if (d._urgent) {
-                    statusClass = 'mf-status-urgent';
-                    statusText = 'Urgent';
-                    statusIcon = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/></svg>';
-                }
-
-                const kamClass = d._kam === 'AHMED ASIF RASHID' ? 'mf-kam-tag-purple' : 'mf-kam-tag-green';
-                const kamInitials = d._kam === 'AHMED ASIF RASHID' ? 'AA' : 'NN';
-                const kamShort = d._kam === 'AHMED ASIF RASHID' ? 'Ahmed Asif' : 'Nuruzzaman';
-
-                const dateStr = d._date ? d._date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) : (d._dateRaw || '-');
-
-                // Try to find a "subject" or "mail subject" or use category/details as fallback
-                let subject = d._raw['Mail Subject'] || d._raw['Subject'] || d._raw['Issue'] || d._raw['Issue Details'] || d._category || '-';
-                if (subject === '-') subject = d._raw[COL_MAP.details || ''] || d._category || '-';
-
-                // Solved date - try to find a solved date column or use comment date
-                let solvedDateStr = '-';
-                let solvedDateObj = null;
-                if (d._solved) {
-                    // Look for solved date in raw data
-                    const possibleSolvedCols = ['Solved Date', 'Resolved Date', 'Closed Date', 'Date Solved', 'Completion Date'];
-                    for (let col of possibleSolvedCols) {
-                        if (d._raw[col]) {
-                            const parsed = parseDateRobust(d._raw[col]);
-                            if (parsed) {
-                                solvedDateObj = parsed;
-                                solvedDateStr = parsed.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
-                                break;
-                            }
-                        }
-                    }
-                    // If no solved date column, use current date as approximation (or leave as '-')
-                    if (solvedDateStr === '-') {
-                        solvedDateStr = '<span style="color: #94a3b8; font-style: italic;">—</span>';
-                    }
-                }
-
-                const gap = getResolutionGap(d._date, solvedDateObj, d._solved);
-                const gapClass = d._solved ? 'mf-gap-solved' : 'mf-gap';
-
-                return `<tr>
-                    <td><span class="text-xs text-slate-400">${start + idx + 1}</span></td>
-                    <td><span class="text-xs text-slate-600">${dateStr}</span></td>
-                    <td><span class="mf-kam-tag ${kamClass}"><span style="width:18px;height:18px;border-radius:50%;background:${d._kam === 'AHMED ASIF RASHID' ? '#8b5cf6' : '#10b981'};color:white;font-size:9px;display:inline-flex;align-items:center;justify-content:center;font-weight:700;">${kamInitials}</span>${kamShort}</span></td>
-                    <td><span class="text-xs text-slate-700 font-medium">${subject}</span></td>
-                    <td><span class="mf-status-badge ${statusClass}">${statusIcon}${statusText}</span></td>
-                    <td><span class="text-xs text-slate-500">${solvedDateStr}</span></td>
-                    <td><span class="mf-gap ${gapClass}">${gap}</span></td>
-                </tr>`;
-            }).join('');
-
-            tbody.innerHTML = bodyHTML;
-            document.getElementById('mfShowingText').textContent = `Showing ${start + 1}-${end} of ${mfFilteredData.length} mails`;
-
-            const totalPages = Math.ceil(mfFilteredData.length / MF_PAGE_SIZE);
-            let pagHTML = '';
-            if (totalPages > 1) {
-                pagHTML += `<button onclick="changeMFPage(${mfCurrentPage - 1})" ${mfCurrentPage === 1 ? 'disabled' : ''} class="mf-pagination-btn" style="${mfCurrentPage === 1 ? 'opacity:0.4;cursor:not-allowed;' : ''}">Prev</button>`;
-                for (let i = 1; i <= totalPages; i++) {
-                    if (i === 1 || i === totalPages || (i >= mfCurrentPage - 1 && i <= mfCurrentPage + 1)) {
-                        pagHTML += `<button onclick="changeMFPage(${i})" class="mf-pagination-btn ${i === mfCurrentPage ? 'active' : ''}">${i}</button>`;
-                    } else if (i === mfCurrentPage - 2 || i === mfCurrentPage + 2) {
-                        pagHTML += `<span class="px-2 text-xs text-slate-400">...</span>`;
-                    }
-                }
-                pagHTML += `<button onclick="changeMFPage(${mfCurrentPage + 1})" ${mfCurrentPage === totalPages ? 'disabled' : ''} class="mf-pagination-btn" style="${mfCurrentPage === totalPages ? 'opacity:0.4;cursor:not-allowed;' : ''}">Next</button>`;
-            }
-            document.getElementById('mfPagination').innerHTML = pagHTML;
-        }
-
-        function changeMFPage(page) {
-            const totalPages = Math.ceil(mfFilteredData.length / MF_PAGE_SIZE);
-            if (page < 1 || page > totalPages) return;
-            mfCurrentPage = page;
-            renderMFTable();
-        }
-
-
         function setPeriod(period, btn) {
             currentPeriod = period;
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -2132,7 +1913,7 @@
             if (filteredData.length === 0) {
                 thead.innerHTML = '<th style="width:100%"></th>';
                 tbody.innerHTML = '<tr><td colspan="100" class="empty-state">No issues match your filters.</td></tr>';
-                document.getElementById('showingText').textContent = 'Showing 0 of 0 mails';
+                document.getElementById('showingText').textContent = 'Showing 0 of 0 issues';
                 document.getElementById('pagination').innerHTML = '';
                 return;
             }
@@ -2178,7 +1959,7 @@
             });
             displayCols = [...priorityCols, ...otherCols].slice(0, 5);
 
-            let headerHTML = '<th style="width:40px"></th><th>KAM</th><th>Status</th><th>IR Mail</th>';
+            let headerHTML = '<th style="width:40px"></th><th>KAM</th><th>Status</th>';
             displayCols.forEach(col => {
                 headerHTML += `<th>${col}</th>`;
             });
@@ -2211,7 +1992,6 @@
                     <td><span class="text-xs text-slate-400">${start + idx + 1}</span></td>
                     <td><span class="kam-tag ${kamClass}"><span style="width:18px;height:18px;border-radius:50%;background:${d._kam === 'AHMED ASIF RASHID' ? '#3b82f6' : '#10b981'};color:white;font-size:10px;display:inline-flex;align-items:center;justify-content:center;font-weight:700;">${kamInitials}</span>${d._kam === 'AHMED ASIF RASHID' ? 'Ahmed Asif' : 'Nuruzzaman'}</span></td>
                     <td><span class="flex items-center gap-2"><span class="status-dot ${statusDot}"></span><span class="text-xs font-medium ${d._solved ? 'text-emerald-600' : d._urgent ? 'text-rose-500' : 'text-amber-500'}">${statusText}</span></span></td>
-                    <td><span class="ir-mail-table-badge ${d._irMail ? 'ir-mail-table-badge-yes' : 'ir-mail-table-badge-no'}">${d._irMail ? '✓ YES' : '— NO'}</span></td>
                     ${cells}
                     <td><span class="text-xs text-slate-600">${comment1Text}</span></td>
                     <td><span class="text-xs text-slate-600">${comment2Text}</span></td>
@@ -2291,7 +2071,6 @@
             setTimeout(() => {
                 if (categoryChart) { categoryChart.destroy(); renderCategoryChart(); }
                 if (dailyChart) { dailyChart.destroy(); renderDailyChart(); }
-                
             }, 50);
         }
 
@@ -2427,6 +2206,190 @@
                 eye.classList.remove('hidden');
                 eyeOff.classList.add('hidden');
             }
+        }
+
+
+
+        // ===================== MAIL FEEDBACK TRACKER =====================
+        function renderMailFeedback() {
+            const mfData = teamData.filter(d => d._irMail);
+            const total = mfData.length;
+            const solved = mfData.filter(d => d._solved).length;
+            const pending = total - solved;
+            const ratio = total > 0 ? Math.round((solved / total) * 100) : 0;
+
+            document.getElementById('mfTotalRaised').textContent = total;
+            document.getElementById('mfPending').textContent = pending;
+            document.getElementById('mfSolved').textContent = solved;
+            document.getElementById('mfSolveRatio').textContent = ratio + '%';
+
+            const ahmedData = mfData.filter(d => d._kam === 'AHMED ASIF RASHID');
+            const ahmedTotal = ahmedData.length;
+            const ahmedSolved = ahmedData.filter(d => d._solved).length;
+            const ahmedPending = ahmedTotal - ahmedSolved;
+            const ahmedRatio = ahmedTotal > 0 ? Math.round((ahmedSolved / ahmedTotal) * 100) : 0;
+            document.getElementById('mfAhmedRaised').textContent = ahmedTotal;
+            document.getElementById('mfAhmedPending').textContent = ahmedPending;
+            document.getElementById('mfAhmedSolved').textContent = ahmedSolved;
+            document.getElementById('mfAhmedRatio').textContent = ahmedRatio + '%';
+            document.getElementById('mfAhmedProgress').style.width = ahmedRatio + '%';
+
+            const nahidData = mfData.filter(d => d._kam === 'NURUZZAMAN NAHID');
+            const nahidTotal = nahidData.length;
+            const nahidSolved = nahidData.filter(d => d._solved).length;
+            const nahidPending = nahidTotal - nahidSolved;
+            const nahidRatio = nahidTotal > 0 ? Math.round((nahidSolved / nahidTotal) * 100) : 0;
+            document.getElementById('mfNahidRaised').textContent = nahidTotal;
+            document.getElementById('mfNahidPending').textContent = nahidPending;
+            document.getElementById('mfNahidSolved').textContent = nahidSolved;
+            document.getElementById('mfNahidRatio').textContent = nahidRatio + '%';
+            document.getElementById('mfNahidProgress').style.width = nahidRatio + '%';
+
+            applyMFFilters();
+        }
+
+        function applyMFFilters() {
+            const search = document.getElementById('mfSearchInput').value.toLowerCase();
+            const statusFilter = document.getElementById('mfStatusFilter').value;
+            const kamFilter = document.getElementById('mfKAMFilter').value;
+
+            let data = teamData.filter(d => d._irMail);
+
+            if (search) {
+                data = data.filter(d => {
+                    const raw = d._raw;
+                    for (let key of Object.keys(raw)) {
+                        if (String(raw[key] || '').toLowerCase().includes(search)) return true;
+                    }
+                    return false;
+                });
+            }
+
+            if (statusFilter !== 'all') {
+                if (statusFilter === 'solved') data = data.filter(d => d._solved);
+                else if (statusFilter === 'pending') data = data.filter(d => !d._solved && !d._urgent);
+                else if (statusFilter === 'urgent') data = data.filter(d => d._urgent);
+            }
+
+            if (kamFilter !== 'all') data = data.filter(d => d._kam === kamFilter);
+
+            // Sort: Pending first (by date desc), then Solved (by date desc)
+            mfFilteredData = data.sort((a, b) => {
+                if (!a._solved && b._solved) return -1;
+                if (a._solved && !b._solved) return 1;
+                if (a._date && b._date) return b._date - a._date;
+                if (a._date && !b._date) return -1;
+                if (!a._date && b._date) return 1;
+                return 0;
+            });
+            mfCurrentPage = 1;
+            renderMFTable();
+        }
+
+        function getResolutionGap(issueDate, solvedDate, isSolved) {
+            if (!isSolved || !issueDate) return '-';
+            const end = solvedDate || new Date();
+            const diffMs = end - issueDate;
+            const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+            if (diffDays < 0) return '-';
+            if (diffDays === 0) return 'Same day';
+            return diffDays + 'd';
+        }
+
+        function renderMFTable() {
+            const tbody = document.getElementById('mfTableBody');
+
+            if (mfFilteredData.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="100" class="mf-empty"><div class="mf-empty-icon">📭</div><div>No mail feedback found.</div></td></tr>';
+                document.getElementById('mfShowingText').textContent = 'Showing 0 of 0 mails';
+                document.getElementById('mfPagination').innerHTML = '';
+                return;
+            }
+
+            const start = (mfCurrentPage - 1) * MF_PAGE_SIZE;
+            const end = Math.min(start + MF_PAGE_SIZE, mfFilteredData.length);
+            const pageData = mfFilteredData.slice(start, end);
+
+            const bodyHTML = pageData.map((d, idx) => {
+                let statusClass = 'mf-status-pending';
+                let statusText = 'Pending';
+                let statusIcon = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>';
+                if (d._solved) {
+                    statusClass = 'mf-status-solved';
+                    statusText = 'Solved';
+                    statusIcon = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>';
+                } else if (d._urgent) {
+                    statusClass = 'mf-status-urgent';
+                    statusText = 'Urgent';
+                    statusIcon = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/></svg>';
+                }
+
+                const kamClass = d._kam === 'AHMED ASIF RASHID' ? 'mf-kam-tag-purple' : 'mf-kam-tag-green';
+                const kamInitials = d._kam === 'AHMED ASIF RASHID' ? 'AA' : 'NN';
+                const kamShort = d._kam === 'AHMED ASIF RASHID' ? 'Ahmed Asif' : 'Nuruzzaman';
+
+                const dateStr = d._date ? d._date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZoneName: 'short' }) : (d._dateRaw || '-');
+
+                let subject = d._raw['Mail Subject'] || d._raw['Subject'] || d._raw['Issue'] || d._raw['Issue Details'] || d._category || '-';
+                if (subject === '-') subject = d._raw[COL_MAP.details || ''] || d._category || '-';
+
+                let solvedDateStr = '-';
+                let solvedDateObj = null;
+                if (d._solved) {
+                    const possibleSolvedCols = ['Solved Date', 'Resolved Date', 'Closed Date', 'Date Solved', 'Completion Date'];
+                    for (let col of possibleSolvedCols) {
+                        if (d._raw[col]) {
+                            const parsed = parseDateRobust(d._raw[col]);
+                            if (parsed) {
+                                solvedDateObj = parsed;
+                                solvedDateStr = parsed.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZoneName: 'short' });
+                                break;
+                            }
+                        }
+                    }
+                    if (solvedDateStr === '-') {
+                        solvedDateStr = '<span style="color: #94a3b8; font-style: italic;">—</span>';
+                    }
+                }
+
+                const gap = getResolutionGap(d._date, solvedDateObj, d._solved);
+                const gapClass = d._solved ? 'mf-gap-solved' : 'mf-gap';
+
+                return '<tr>' +
+                    '<td><span class="text-xs text-slate-400">' + (start + idx + 1) + '</span></td>' +
+                    '<td><span class="text-xs text-slate-600">' + dateStr + '</span></td>' +
+                    '<td><span class="mf-kam-tag ' + kamClass + '"><span style="width:18px;height:18px;border-radius:50%;background:' + (d._kam === 'AHMED ASIF RASHID' ? '#8b5cf6' : '#10b981') + ';color:white;font-size:9px;display:inline-flex;align-items:center;justify-content:center;font-weight:700;">' + kamInitials + '</span>' + kamShort + '</span></td>' +
+                    '<td><span class="text-xs text-slate-700 font-medium">' + subject + '</span></td>' +
+                    '<td><span class="mf-status-badge ' + statusClass + '">' + statusIcon + statusText + '</span></td>' +
+                    '<td><span class="text-xs text-slate-500">' + solvedDateStr + '</span></td>' +
+                    '<td><span class="mf-gap ' + gapClass + '">' + gap + '</span></td>' +
+                '</tr>';
+            }).join('');
+
+            tbody.innerHTML = bodyHTML;
+            document.getElementById('mfShowingText').textContent = 'Showing ' + (start + 1) + '-' + end + ' of ' + mfFilteredData.length + ' mails';
+
+            const totalPages = Math.ceil(mfFilteredData.length / MF_PAGE_SIZE);
+            let pagHTML = '';
+            if (totalPages > 1) {
+                pagHTML += '<button onclick="changeMFPage(' + (mfCurrentPage - 1) + ')" ' + (mfCurrentPage === 1 ? 'disabled' : '') + ' class="mf-pagination-btn" style="' + (mfCurrentPage === 1 ? 'opacity:0.4;cursor:not-allowed;' : '') + '">Prev</button>';
+                for (let i = 1; i <= totalPages; i++) {
+                    if (i === 1 || i === totalPages || (i >= mfCurrentPage - 1 && i <= mfCurrentPage + 1)) {
+                        pagHTML += '<button onclick="changeMFPage(' + i + ')" class="mf-pagination-btn ' + (i === mfCurrentPage ? 'active' : '') + '">' + i + '</button>';
+                    } else if (i === mfCurrentPage - 2 || i === mfCurrentPage + 2) {
+                        pagHTML += '<span class="px-2 text-xs text-slate-400">...</span>';
+                    }
+                }
+                pagHTML += '<button onclick="changeMFPage(' + (mfCurrentPage + 1) + ')" ' + (mfCurrentPage === totalPages ? 'disabled' : '') + ' class="mf-pagination-btn" style="' + (mfCurrentPage === totalPages ? 'opacity:0.4;cursor:not-allowed;' : '') + '">Next</button>';
+            }
+            document.getElementById('mfPagination').innerHTML = pagHTML;
+        }
+
+        function changeMFPage(page) {
+            const totalPages = Math.ceil(mfFilteredData.length / MF_PAGE_SIZE);
+            if (page < 1 || page > totalPages) return;
+            mfCurrentPage = page;
+            renderMFTable();
         }
 
         // ===================== INIT =====================
