@@ -971,6 +971,7 @@
 
             <!-- MAIL FEEDBACK TRACKER SECTION -->
             <div class="card p-6" id="mailFeedbackSection">
+                <div id="dataLoadMessage"></div>
                 <div class="mail-feedback-title">Mail Feedback Tracker</div>
 
                 <!-- Summary Cards -->
@@ -2395,29 +2396,120 @@
         // ===================== DATA FETCHING =====================
         async function fetchMailFeedbackData() {
             try {
-                // Convert the sheet URL to CSV export format
                 const sheetId = '1qWXu2WRA_D6qRwAK7mbGVJ-xHH2MHwqDHZiP5sO3Ofo';
-                const csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv`;
                 
-                const response = await fetch(csvUrl);
+                // Try multiple methods to fetch the data
+                let csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv`;
+                
+                console.log('Attempting to fetch from:', csvUrl);
+                
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 8000);
+                
+                const response = await fetch(csvUrl, {
+                    signal: controller.signal,
+                    mode: 'cors',
+                    headers: {
+                        'Accept': 'text/csv'
+                    }
+                });
+                
+                clearTimeout(timeoutId);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
                 const csvText = await response.text();
+                
+                if (!csvText || csvText.length < 10) {
+                    throw new Error('Empty or invalid CSV data received');
+                }
                 
                 // Parse CSV using PapaParse
                 Papa.parse(csvText, {
                     header: true,
                     skipEmptyLines: true,
                     complete: function(results) {
-                        teamData = results.data.filter(row => row['Mail Subject'] || row['Subject'] || row['Issue']);
-                        updateMailCounts();
-                        applyMFFilters();
+                        console.log('Parsed rows:', results.data.length);
+                        if (results.data && results.data.length > 0) {
+                            teamData = results.data.filter(row => row['Mail Subject'] || row['Subject'] || row['Issue']);
+                            console.log('Filtered data:', teamData.length);
+                            if (teamData.length > 0) {
+                                updateMailCounts();
+                                applyMFFilters();
+                                showDataLoadSuccess();
+                            } else {
+                                showManualDataInput();
+                            }
+                        } else {
+                            showManualDataInput();
+                        }
                     },
                     error: function(err) {
                         console.error('CSV Parse Error:', err);
+                        showManualDataInput();
                     }
                 });
             } catch (error) {
-                console.error('Error fetching sheet:', error);
+                console.error('Error fetching sheet:', error.message);
+                showManualDataInput();
             }
+        }
+
+        function showDataLoadSuccess() {
+            const message = document.getElementById('dataLoadMessage');
+            if (message) {
+                message.innerHTML = '<div style="background: #d4edda; color: #155724; padding: 12px; border-radius: 8px; margin-bottom: 16px; border: 1px solid #c3e6cb;">✓ Data loaded successfully from Google Sheet</div>';
+                setTimeout(() => {
+                    if (message.querySelector('div')) message.innerHTML = '';
+                }, 5000);
+            }
+        }
+
+        function showManualDataInput() {
+            console.warn('Could not fetch from Google Sheet. Showing manual input option.');
+            const message = document.getElementById('dataLoadMessage');
+            if (message) {
+                message.innerHTML = `
+                    <div style="background: #fff3cd; color: #856404; padding: 12px; border-radius: 8px; margin-bottom: 16px; border: 1px solid #ffeaa7;">
+                        ⚠️ Could not fetch from Google Sheet. 
+                        <button onclick="document.getElementById('manualInputModal').style.display='flex'" style="background: #ffc107; color: #333; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: 600;">
+                            Enter Data Manually
+                        </button>
+                    </div>
+                `;
+            }
+        }
+
+        function handleManualDataInput() {
+            const csvInput = document.getElementById('csvDataInput').value.trim();
+            if (!csvInput) {
+                alert('Please paste your CSV data');
+                return;
+            }
+            
+            Papa.parse(csvInput, {
+                header: true,
+                skipEmptyLines: true,
+                complete: function(results) {
+                    if (results.data && results.data.length > 0) {
+                        teamData = results.data;
+                        updateMailCounts();
+                        applyMFFilters();
+                        document.getElementById('manualInputModal').style.display = 'none';
+                        document.getElementById('csvDataInput').value = '';
+                        showDataLoadSuccess();
+                        alert('Data loaded successfully! Counts updated.');
+                    } else {
+                        alert('No valid data found in your input');
+                    }
+                }
+            });
+        }
+
+        function closeManualInputModal() {
+            document.getElementById('manualInputModal').style.display = 'none';
         }
 
         function updateMailCounts() {
@@ -2485,5 +2577,30 @@
             setTimeout(fetchMailFeedbackData, 500);
         });
     </script>
+
+    <!-- Manual Data Input Modal -->
+    <div id="manualInputModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 9999; align-items: center; justify-content: center;">
+        <div style="background: white; border-radius: 12px; padding: 30px; max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto;">
+            <div style="font-size: 20px; font-weight: 700; margin-bottom: 16px;">📊 Enter Mail Feedback Data</div>
+            <p style="color: #666; margin-bottom: 16px;">Copy your Google Sheet data (including headers) and paste it below:</p>
+            
+            <textarea id="csvDataInput" placeholder="Paste your data here (Excel/Sheets format or CSV)&#10;Example:&#10;Mail Subject,Status,KAM,Date&#10;Dashboard bug,Solved,Ahmed Asif Rashid,2024-01-15&#10;API issue,Pending,Nuruzzaman Nahid,2024-01-18" style="width: 100%; height: 300px; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-family: monospace; font-size: 12px; resize: vertical;"></textarea>
+            
+            <div style="margin-top: 20px; display: flex; gap: 10px;">
+                <button onclick="handleManualDataInput()" style="flex: 1; background: #3b82f6; color: white; border: none; padding: 12px; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 14px;">✓ Load Data</button>
+                <button onclick="closeManualInputModal()" style="flex: 1; background: #e2e8f0; color: #333; border: none; padding: 12px; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 14px;">Cancel</button>
+            </div>
+            
+            <div style="margin-top: 16px; padding: 12px; background: #f0f4f8; border-radius: 8px; font-size: 12px; color: #666;">
+                <strong>How to get your data:</strong><br>
+                1. Open your Google Sheet<br>
+                2. Select all data (Ctrl+A)<br>
+                3. Copy (Ctrl+C)<br>
+                4. Paste here<br><br>
+                <strong>Required columns:</strong> Mail Subject, Status, KAM<br>
+                <strong>Status values:</strong> Use "Solved" for completed items
+            </div>
+        </div>
+    </div>
 </body>
 </html>
