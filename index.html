@@ -1312,44 +1312,14 @@
         const SHEETS = [
             { name: 'Sheet 1', displayName: 'ISD', url: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRvcHh_-szyOevlR4V86qiagypaMcBaF-ikwfeMJ-vamXKQBH7jWaIrmajn9VdgE5xm78RN_L30O5_s/pub?output=csv' },
             { name: 'Sheet 2', displayName: 'OSD', url: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSAVNwzXLfSVFu4psJlhz7pqMKtEocVNUKChUbpRaFoXVxSric-zuGESs7GyT0R6DO_sF76RE951c3B/pub?output=csv' },
-            { name: 'Sheet 3', displayName: 'Central', url: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRsO79-0XIgKVkMKaIPjkBCp-npePr9WxH8LCX3jcPslWC4PlP4Qsa0qalr6FQuBZGmPsiLnkt2uv2S/pub?gid=0&single=true&output=csv' },
-            {
-                name: 'Sheet 4',
-                displayName: 'Mail Log',
-                // Published-to-web CSV URL
-                url: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRlViGGma2_xDruRqM8Y77VWWiO7OwvylvZP9UTD30uGPMOyn8C5Ceo1DzlBhHTsRT5kzKo3GqFo6Vg/pub?output=csv',
-                // Every row is a mail log entry — no IR flag column needed
-                isMailSheet: true,
-                // Explicit column map (auto-detection can't handle these non-standard names)
-                colOverrides: {
-                    kam:       'KAM Mail',        // nuruzzaman.nahid@carrybee.com
-                    kamName:   'KAM Name',         // "Nuruzzaman Nahid" plain text
-                    date:      'Date',             // issue date
-                    status:    'Slove',            // TRUE = solved, FALSE = pending
-                    pending:   'Panding',          // TRUE = still pending
-                    solvedDate:'Slove date',       // resolution date
-                    subject:   'Mail Subject Line' // mail subject
-                }
-            }
+            { name: 'Sheet 3', displayName: 'Central', url: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRsO79-0XIgKVkMKaIPjkBCp-npePr9WxH8LCX3jcPslWC4PlP4Qsa0qalr6FQuBZGmPsiLnkt2uv2S/pub?gid=0&single=true&output=csv' }
         ];
 
         const KAM_MAP = {
-            // Email formats
             'ahmed.asif@carrybee.com': 'AHMED ASIF RASHID',
             'ahmed.asif': 'AHMED ASIF RASHID',
-            // Full & partial name formats
-            'ahmed asif rashid': 'AHMED ASIF RASHID',
-            'ahmed asif': 'AHMED ASIF RASHID',
-            'ahmedasifrashid': 'AHMED ASIF RASHID',
-            'ahmedasif': 'AHMED ASIF RASHID',
-            // Email formats
             'nuruzzaman.nahid@carrybee.com': 'NURUZZAMAN NAHID',
-            'nuruzzaman.nahid': 'NURUZZAMAN NAHID',
-            // Full & partial name formats
-            'nuruzzaman nahid': 'NURUZZAMAN NAHID',
-            'nuruzzaman': 'NURUZZAMAN NAHID',
-            'nahid nuruzzaman': 'NURUZZAMAN NAHID',
-            'nuruzzamannahid': 'NURUZZAMAN NAHID'
+            'nuruzzaman.nahid': 'NURUZZAMAN NAHID'
         };
 
         const TARGET_KAMS = ['AHMED ASIF RASHID', 'NURUZZAMAN NAHID'];
@@ -1376,13 +1346,6 @@
 
             let d = new Date(str);
             if (!isNaN(d.getTime())) return d;
-
-            // dd-MMM-yyyy  e.g. "18-May-2026"
-            const dMonthYear = str.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{4})$/);
-            if (dMonthYear) {
-                d = new Date(`${dMonthYear[1]} ${dMonthYear[2]} ${dMonthYear[3]}`);
-                if (!isNaN(d.getTime())) return d;
-            }
 
             const usMatch = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2}):(\d{2}))?/);
             if (usMatch) {
@@ -1426,30 +1389,11 @@
         }
 
         // ===================== DATA FETCHING =====================
-        async function fetchCSV(url, fallbackUrl) {
-            async function tryFetch(u) {
-                const response = await fetch(u, { cache: 'no-store' });
-                if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                const text = await response.text();
-                // Detect Google sign-in redirect (HTML returned instead of CSV)
-                if (text.trim().startsWith('<!') || text.includes('<html')) {
-                    throw new Error('Received HTML (sheet may not be public or published)');
-                }
-                return Papa.parse(text, { header: true, skipEmptyLines: true }).data;
-            }
-            try {
-                return await tryFetch(url);
-            } catch (primaryErr) {
-                if (fallbackUrl) {
-                    try {
-                        console.warn(`Primary URL failed (${primaryErr.message}), trying fallback...`);
-                        return await tryFetch(fallbackUrl);
-                    } catch (fallbackErr) {
-                        throw new Error(`Both URLs failed. Primary: ${primaryErr.message} | Fallback: ${fallbackErr.message}`);
-                    }
-                }
-                throw primaryErr;
-            }
+        async function fetchCSV(url) {
+            const response = await fetch(url, { cache: 'no-store' });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const text = await response.text();
+            return Papa.parse(text, { header: true, skipEmptyLines: true }).data;
         }
 
         function normalizeKAM(val) {
@@ -1459,27 +1403,13 @@
             return KAM_MAP[clean] || KAM_MAP[base] || String(val).toUpperCase();
         }
 
-        function findKAMInRow(row, forceSearch) {
-            // Pass 1: exact KAM_MAP lookup (email or exact name)
+        function findKAMInRow(row) {
             for (const key of Object.keys(row)) {
                 const val = String(row[key] || '').toLowerCase().trim();
                 if (!val) continue;
                 const base = val.split('@')[0];
                 if (KAM_MAP[val] || KAM_MAP[base]) {
                     return { kam: KAM_MAP[val] || KAM_MAP[base], column: key };
-                }
-            }
-            // Pass 2 (for mail sheets): substring detection — catches "Ahmed Asif", "Nahid" etc.
-            if (forceSearch) {
-                for (const key of Object.keys(row)) {
-                    const val = String(row[key] || '').toLowerCase().trim();
-                    if (!val || val.length > 60) continue; // skip long free-text fields
-                    if (val.includes('ahmed asif') || val.includes('ahmed') && val.includes('asif')) {
-                        return { kam: 'AHMED ASIF RASHID', column: key };
-                    }
-                    if (val.includes('nuruzzaman') || val.includes('nahid')) {
-                        return { kam: 'NURUZZAMAN NAHID', column: key };
-                    }
                 }
             }
             return null;
@@ -1612,10 +1542,7 @@
             const hasAnyComment = hasComment1 || hasComment2;
 
             if (status) {
-                const s = String(status).toLowerCase().trim();
-                // Boolean TRUE (e.g. "Slove" column in mail sheet)
-                if (s === 'true' || s === '1') return true;
-                // Text-based status values
+                const s = String(status).toLowerCase();
                 if (s.includes('solved') || s.includes('resolved') || s.includes('closed') || s.includes('done') || s.includes('complete')) return true;
             }
             if (hasAnyComment) return true;
@@ -1667,7 +1594,7 @@
 
             for (let i = 0; i < SHEETS.length; i++) {
                 try {
-                    const rows = await fetchCSV(SHEETS[i].url, SHEETS[i].fallbackUrl || null);
+                    const rows = await fetchCSV(SHEETS[i].url);
                     const rowCount = rows.length;
 
                     if (rows.length === 0) {
@@ -1692,16 +1619,8 @@
                         comment2: detected.comment2
                     };
 
-                    // Apply explicit column overrides (used by mail sheet with non-standard headers)
-                    const co = SHEETS[i].colOverrides || {};
-                    if (co.kam)       sheetColMap.kam       = co.kam;
-                    if (co.date)      sheetColMap.date      = co.date;
-                    if (co.status)    sheetColMap.status    = co.status;
-                    if (co.subject)   sheetColMap.details   = co.subject;  // reuse details slot for mail subject
-
                     const kamCol = sheetColMap.kam || headers[0];
                     let sheetTeamCount = 0;
-                    const isMailSheet = !!SHEETS[i].isMailSheet;
 
                     rows.forEach(row => {
                         let kamVal = row[kamCol];
@@ -1709,8 +1628,7 @@
                         let foundCol = kamCol;
 
                         if (kamName === 'UNKNOWN' || !TARGET_KAMS.includes(kamName)) {
-                            // Pass forceSearch=true for dedicated mail sheets to catch plain names
-                            const found = findKAMInRow(row, isMailSheet);
+                            const found = findKAMInRow(row);
                             if (found) {
                                 kamName = found.kam;
                                 foundCol = found.column;
@@ -1724,9 +1642,6 @@
                         const comment1Val = sheetColMap.comment1 ? (row[sheetColMap.comment1] || '') : '';
                         const comment2Val = sheetColMap.comment2 ? (row[sheetColMap.comment2] || '') : '';
                         const opsVal = String(comment1Val).trim() || String(comment2Val).trim();
-
-                        // For mail sheets: force _irMail=true even if no IR column detected
-                        const irMailFlag = isMailSheet ? true : isIRMail(irVal);
 
                         if (detected.opsReplyCols && detected.opsReplyCols.length) {
                             const existing = new Set(COL_MAP.opsReplyCols || []);
@@ -1744,8 +1659,7 @@
                             _category: categoryVal ? String(categoryVal).trim() : 'Uncategorized',
                             _date: parseDateRobust(dateVal),
                             _dateRaw: dateVal,
-                            _irMail: irMailFlag,
-                            _isMailSheetRow: isMailSheet,  // flag to include in teamData regardless of KAM
+                            _irMail: isIRMail(irVal),
                             _opsReply: opsVal ? String(opsVal).trim() : '',
                             _comment1: comment1Val ? String(comment1Val).trim() : '',
                             _comment2: comment2Val ? String(comment2Val).trim() : '',
@@ -1757,7 +1671,7 @@
                         if (TARGET_KAMS.includes(kamName)) sheetTeamCount++;
                     });
 
-                    debugInfo.push({ name: SHEETS[i].displayName, count: rowCount, teamCount: sheetTeamCount, status: 'ok', isMail: !!SHEETS[i].isMailSheet, cols: { cat: sheetColMap.category, stat: sheetColMap.status } });
+                    debugInfo.push({ name: SHEETS[i].displayName, count: rowCount, teamCount: sheetTeamCount, status: 'ok', cols: { cat: sheetColMap.category, stat: sheetColMap.status } });
                 } catch (e) {
                     errors.push(`${SHEETS[i].displayName}: ${e.message}`);
                     debugInfo.push({ name: SHEETS[i].displayName, count: 0, status: 'error', error: e.message });
@@ -1766,15 +1680,13 @@
             }
 
             allData = sortByDateDesc(allData);
-            // teamData = KAM-matched issues + ALL rows from dedicated mail sheets
-            teamData = allData.filter(d => TARGET_KAMS.includes(d._kam) || d._isMailSheetRow);
+            teamData = allData.filter(d => TARGET_KAMS.includes(d._kam));
 
             const debugBar = document.getElementById('debugBar');
             const debugHTML = debugInfo.map(d => {
                 if (d.status === 'error') return `<span class="err">${d.name}: ERROR (${d.error})</span>`;
                 if (d.status === 'empty') return `<span>${d.name}: 0 rows</span>`;
-                const mailTag = d.isMail ? ' 📧' : '';
-                return `<span class="ok">${d.name}${mailTag}: ${d.count} rows${d.teamCount !== undefined ? ' (' + d.teamCount + ' team)' : ''}${d.cols ? ' [cat:'+(d.cols.cat||'none')+']' : ''}</span>`;
+                return `<span class="ok">${d.name}: ${d.count} rows${d.teamCount !== undefined ? ' (' + d.teamCount + ' team)' : ''}${d.cols ? ' [cat:'+(d.cols.cat||'none')+']' : ''}</span>`;
             }).join('');
             debugBar.innerHTML = debugHTML + `<span style="color:#94a3b8">| Total team: ${teamData.length}</span>`;
             debugBar.classList.remove('hidden');
@@ -2416,17 +2328,15 @@
                 const kamInitials = d._kam === 'AHMED ASIF RASHID' ? 'AA' : 'NN';
                 const kamShort = d._kam === 'AHMED ASIF RASHID' ? 'Ahmed Asif' : 'Nuruzzaman';
 
-                const dateStr = d._date
-                    ? d._date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })
-                    : (d._dateRaw || '-');
+                const dateStr = d._date ? d._date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZoneName: 'short' }) : (d._dateRaw || '-');
 
-                let subject = d._raw['Mail Subject Line'] || d._raw['Mail Subject'] || d._raw['Subject'] || d._raw['Issue'] || d._raw['Issue Details'] || d._category || '-';
+                let subject = d._raw['Mail Subject'] || d._raw['Subject'] || d._raw['Issue'] || d._raw['Issue Details'] || d._category || '-';
                 if (subject === '-') subject = d._raw[COL_MAP.details || ''] || d._category || '-';
 
                 let solvedDateStr = '-';
                 let solvedDateObj = null;
                 if (d._solved) {
-                    const possibleSolvedCols = ['Slove date', 'Solved Date', 'Resolved Date', 'Closed Date', 'Date Solved', 'Completion Date'];
+                    const possibleSolvedCols = ['Solved Date', 'Resolved Date', 'Closed Date', 'Date Solved', 'Completion Date'];
                     for (let col of possibleSolvedCols) {
                         if (d._raw[col]) {
                             const parsed = parseDateRobust(d._raw[col]);
