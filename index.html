@@ -2392,11 +2392,98 @@
             renderMFTable();
         }
 
+        // ===================== DATA FETCHING =====================
+        async function fetchMailFeedbackData() {
+            try {
+                // Convert the sheet URL to CSV export format
+                const sheetId = '1qWXu2WRA_D6qRwAK7mbGVJ-xHH2MHwqDHZiP5sO3Ofo';
+                const csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv`;
+                
+                const response = await fetch(csvUrl);
+                const csvText = await response.text();
+                
+                // Parse CSV using PapaParse
+                Papa.parse(csvText, {
+                    header: true,
+                    skipEmptyLines: true,
+                    complete: function(results) {
+                        teamData = results.data.filter(row => row['Mail Subject'] || row['Subject'] || row['Issue']);
+                        updateMailCounts();
+                        applyMFFilters();
+                    },
+                    error: function(err) {
+                        console.error('CSV Parse Error:', err);
+                    }
+                });
+            } catch (error) {
+                console.error('Error fetching sheet:', error);
+            }
+        }
+
+        function updateMailCounts() {
+            if (!teamData || teamData.length === 0) return;
+
+            // Count total mails
+            const totalMails = teamData.length;
+            
+            // Count by status
+            const solvedMails = teamData.filter(d => {
+                const solved = d['Status'] === 'Solved' || d['Status'] === 'SOLVED' || d['Solved'] === 'Yes' || d['Solved'] === 'TRUE';
+                return solved;
+            }).length;
+            
+            const pendingMails = teamData.filter(d => {
+                const solved = d['Status'] === 'Solved' || d['Status'] === 'SOLVED' || d['Solved'] === 'Yes' || d['Solved'] === 'TRUE';
+                return !solved;
+            }).length;
+            
+            const solveRatio = totalMails > 0 ? Math.round((solvedMails / totalMails) * 100) : 0;
+
+            // Update summary cards
+            document.getElementById('mfTotalRaised').textContent = totalMails;
+            document.getElementById('mfPending').textContent = pendingMails;
+            document.getElementById('mfSolved').textContent = solvedMails;
+            document.getElementById('mfSolveRatio').textContent = solveRatio + '%';
+
+            // Count by KAM
+            const ahmedMails = teamData.filter(d => 
+                (d['KAM'] || d['Assigned To'] || '').toUpperCase().includes('AHMED')
+            );
+            const nuruzzamanMails = teamData.filter(d => 
+                (d['KAM'] || d['Assigned To'] || '').toUpperCase().includes('NURUZZAMAN')
+            );
+
+            // Update KAM cards
+            const ahmedSolved = ahmedMails.filter(d => d['Status'] === 'Solved' || d['Status'] === 'SOLVED' || d['Solved'] === 'Yes').length;
+            const nuruzzamanSolved = nuruzzamanMails.filter(d => d['Status'] === 'Solved' || d['Status'] === 'SOLVED' || d['Solved'] === 'Yes').length;
+
+            // Update Ahmed's card
+            document.getElementById('mfAhmedRaised').textContent = ahmedMails.length;
+            document.getElementById('mfAhmedPending').textContent = ahmedMails.length - ahmedSolved;
+            document.getElementById('mfAhmedSolved').textContent = ahmedSolved;
+            const ahmedRatio = ahmedMails.length > 0 ? Math.round((ahmedSolved / ahmedMails.length) * 100) : 0;
+            document.getElementById('mfAhmedRatio').textContent = ahmedRatio + '%';
+            document.getElementById('mfAhmedProgress').style.width = ahmedRatio + '%';
+
+            // Update Nuruzzaman's card
+            document.getElementById('mfNahidRaised').textContent = nuruzzamanMails.length;
+            document.getElementById('mfNahidPending').textContent = nuruzzamanMails.length - nuruzzamanSolved;
+            document.getElementById('mfNahidSolved').textContent = nuruzzamanSolved;
+            const nuruzzamanRatio = nuruzzamanMails.length > 0 ? Math.round((nuruzzamanSolved / nuruzzamanMails.length) * 100) : 0;
+            document.getElementById('mfNahidRatio').textContent = nuruzzamanRatio + '%';
+            document.getElementById('mfNahidProgress').style.width = nuruzzamanRatio + '%';
+        }
+
         // ===================== INIT =====================
         initTheme();
         if (!checkAuth()) {
             document.getElementById('authUser').focus();
         }
+        
+        // Fetch mail feedback data on page load
+        window.addEventListener('load', function() {
+            setTimeout(fetchMailFeedbackData, 500);
+        });
     </script>
 </body>
 </html>
