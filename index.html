@@ -2254,35 +2254,45 @@
             const statusFilter = document.getElementById('mfStatusFilter').value;
             const kamFilter = document.getElementById('mfKAMFilter').value;
 
-            let data = teamData.filter(d => d._irMail);
+            let data = teamData.filter(d => d._mail);
 
             if (search) {
                 data = data.filter(d => {
-                    const raw = d._raw;
-                    for (let key of Object.keys(raw)) {
-                        if (String(raw[key] || '').toLowerCase().includes(search)) return true;
-                    }
-                    return false;
+                    const searchableText = (d._mail || '') + ' ' + (d._status || '') + ' ' + (d._kam || '');
+                    return searchableText.toLowerCase().includes(search);
                 });
             }
 
             if (statusFilter !== 'all') {
-                if (statusFilter === 'solved') data = data.filter(d => d._solved);
-                else if (statusFilter === 'pending') data = data.filter(d => !d._solved && !d._urgent);
-                else if (statusFilter === 'urgent') data = data.filter(d => d._urgent);
+                if (statusFilter === 'solved') {
+                    data = data.filter(d => {
+                        const status = (d._status || '').toUpperCase();
+                        return status.includes('SOLVED');
+                    });
+                }
+                else if (statusFilter === 'pending') {
+                    data = data.filter(d => {
+                        const status = (d._status || '').toUpperCase();
+                        return !status.includes('SOLVED');
+                    });
+                }
+                else if (statusFilter === 'urgent') {
+                    data = data.filter(d => {
+                        const status = (d._status || '').toUpperCase();
+                        return status.includes('URGENT');
+                    });
+                }
             }
 
-            if (kamFilter !== 'all') data = data.filter(d => d._kam === kamFilter);
+            if (kamFilter !== 'all') {
+                data = data.filter(d => {
+                    const kam = (d._kam || '').toUpperCase();
+                    const filterUpper = kamFilter.toUpperCase();
+                    return kam.includes('AHMED') ? filterUpper.includes('AHMED') : kam.includes('NURUZZAMAN') ? filterUpper.includes('NURUZZAMAN') : false;
+                });
+            }
 
-            // Sort: Pending first (by date desc), then Solved (by date desc)
-            mfFilteredData = data.sort((a, b) => {
-                if (!a._solved && b._solved) return -1;
-                if (a._solved && !b._solved) return 1;
-                if (a._date && b._date) return b._date - a._date;
-                if (a._date && !b._date) return -1;
-                if (!a._date && b._date) return 1;
-                return 0;
-            });
+            mfFilteredData = data;
             mfCurrentPage = 1;
             renderMFTable();
         }
@@ -2312,58 +2322,42 @@
             const pageData = mfFilteredData.slice(start, end);
 
             const bodyHTML = pageData.map((d, idx) => {
+                // Determine status
+                const statusUpper = (d._status || '').toUpperCase();
+                const isSolved = statusUpper.includes('SOLVED');
+                const isUrgent = statusUpper.includes('URGENT');
+                
                 let statusClass = 'mf-status-pending';
                 let statusText = 'Pending';
                 let statusIcon = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>';
-                if (d._solved) {
+                
+                if (isSolved) {
                     statusClass = 'mf-status-solved';
                     statusText = 'Solved';
                     statusIcon = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>';
-                } else if (d._urgent) {
+                } else if (isUrgent) {
                     statusClass = 'mf-status-urgent';
                     statusText = 'Urgent';
                     statusIcon = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/></svg>';
                 }
 
-                const kamClass = d._kam === 'AHMED ASIF RASHID' ? 'mf-kam-tag-purple' : 'mf-kam-tag-green';
-                const kamInitials = d._kam === 'AHMED ASIF RASHID' ? 'AA' : 'NN';
-                const kamShort = d._kam === 'AHMED ASIF RASHID' ? 'Ahmed Asif' : 'Nuruzzaman';
+                const kamUpper = (d._kam || '').toUpperCase();
+                const isAhmed = kamUpper.includes('AHMED');
+                const kamClass = isAhmed ? 'mf-kam-tag-purple' : 'mf-kam-tag-green';
+                const kamInitials = isAhmed ? 'AA' : 'NN';
+                const kamShort = isAhmed ? 'Ahmed Asif' : 'Nuruzzaman';
 
-                const dateStr = d._date ? d._date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZoneName: 'short' }) : (d._dateRaw || '-');
-
-                let subject = d._raw['Mail Subject'] || d._raw['Subject'] || d._raw['Issue'] || d._raw['Issue Details'] || d._category || '-';
-                if (subject === '-') subject = d._raw[COL_MAP.details || ''] || d._category || '-';
-
-                let solvedDateStr = '-';
-                let solvedDateObj = null;
-                if (d._solved) {
-                    const possibleSolvedCols = ['Solved Date', 'Resolved Date', 'Closed Date', 'Date Solved', 'Completion Date'];
-                    for (let col of possibleSolvedCols) {
-                        if (d._raw[col]) {
-                            const parsed = parseDateRobust(d._raw[col]);
-                            if (parsed) {
-                                solvedDateObj = parsed;
-                                solvedDateStr = parsed.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZoneName: 'short' });
-                                break;
-                            }
-                        }
-                    }
-                    if (solvedDateStr === '-') {
-                        solvedDateStr = '<span style="color: #94a3b8; font-style: italic;">—</span>';
-                    }
-                }
-
-                const gap = getResolutionGap(d._date, solvedDateObj, d._solved);
-                const gapClass = d._solved ? 'mf-gap-solved' : 'mf-gap';
+                const dateStr = d._date ? (typeof d._date === 'string' ? d._date : d._date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' })) : '-';
+                const subject = d._mail || '-';
 
                 return '<tr>' +
                     '<td><span class="text-xs text-slate-400">' + (start + idx + 1) + '</span></td>' +
                     '<td><span class="text-xs text-slate-600">' + dateStr + '</span></td>' +
-                    '<td><span class="mf-kam-tag ' + kamClass + '"><span style="width:18px;height:18px;border-radius:50%;background:' + (d._kam === 'AHMED ASIF RASHID' ? '#8b5cf6' : '#10b981') + ';color:white;font-size:9px;display:inline-flex;align-items:center;justify-content:center;font-weight:700;">' + kamInitials + '</span>' + kamShort + '</span></td>' +
+                    '<td><span class="mf-kam-tag ' + kamClass + '"><span style="width:18px;height:18px;border-radius:50%;background:' + (isAhmed ? '#8b5cf6' : '#10b981') + ';color:white;font-size:9px;display:inline-flex;align-items:center;justify-content:center;font-weight:700;">' + kamInitials + '</span>' + kamShort + '</span></td>' +
                     '<td><span class="text-xs text-slate-700 font-medium">' + subject + '</span></td>' +
                     '<td><span class="mf-status-badge ' + statusClass + '">' + statusIcon + statusText + '</span></td>' +
-                    '<td><span class="text-xs text-slate-500">' + solvedDateStr + '</span></td>' +
-                    '<td><span class="mf-gap ' + gapClass + '">' + gap + '</span></td>' +
+                    '<td><span class="text-xs text-slate-500">-</span></td>' +
+                    '<td><span class="mf-gap">-</span></td>' +
                 '</tr>';
             }).join('');
 
@@ -2391,6 +2385,18 @@
             if (page < 1 || page > totalPages) return;
             mfCurrentPage = page;
             renderMFTable();
+        }
+
+        // Helper function to find column by various possible names
+        function findColumn(row, possibleNames) {
+            if (!row) return null;
+            for (let name of possibleNames) {
+                if (row[name]) return row[name];
+                // Also try case-insensitive match
+                const found = Object.keys(row).find(key => key.toLowerCase() === name.toLowerCase());
+                if (found && row[found]) return row[found];
+            }
+            return null;
         }
 
         // ===================== DATA FETCHING =====================
@@ -2433,13 +2439,31 @@
                     complete: function(results) {
                         console.log('Parsed rows:', results.data.length);
                         if (results.data && results.data.length > 0) {
-                            teamData = results.data.filter(row => row['Mail Subject'] || row['Subject'] || row['Issue']);
+                            // Map column names more flexibly
+                            teamData = results.data.map(row => {
+                                const subject = findColumn(row, ['Mail Subject', 'Subject', 'Issue', 'Issue Summary', 'Title', 'Name']);
+                                const status = findColumn(row, ['Status', 'Issue Status', 'State', 'Progress']);
+                                const kam = findColumn(row, ['KAM', 'Assigned To', 'Assigned', 'Email Address', 'Owner', 'Assignee']);
+                                const date = findColumn(row, ['Date', 'Date Created', 'Created', 'Issue Date', 'Raised Date']);
+                                
+                                return {
+                                    ...row,
+                                    '_mail': subject,
+                                    '_status': status,
+                                    '_kam': kam,
+                                    '_date': date
+                                };
+                            }).filter(row => row['_mail']);
+                            
                             console.log('Filtered data:', teamData.length);
+                            console.log('Sample row:', teamData[0]);
+                            
                             if (teamData.length > 0) {
                                 updateMailCounts();
                                 applyMFFilters();
                                 showDataLoadSuccess();
                             } else {
+                                console.warn('No data with subject column found');
                                 showManualDataInput();
                             }
                         } else {
@@ -2485,7 +2509,7 @@
         function handleManualDataInput() {
             const csvInput = document.getElementById('csvDataInput').value.trim();
             if (!csvInput) {
-                alert('Please paste your CSV data');
+                alert('Please paste your data');
                 return;
             }
             
@@ -2494,15 +2518,36 @@
                 skipEmptyLines: true,
                 complete: function(results) {
                     if (results.data && results.data.length > 0) {
-                        teamData = results.data;
-                        updateMailCounts();
-                        applyMFFilters();
-                        document.getElementById('manualInputModal').style.display = 'none';
-                        document.getElementById('csvDataInput').value = '';
-                        showDataLoadSuccess();
-                        alert('Data loaded successfully! Counts updated.');
+                        // Map column names more flexibly
+                        teamData = results.data.map(row => {
+                            const subject = findColumn(row, ['Mail Subject', 'Subject', 'Issue', 'Issue Summary', 'Title', 'Name', 'Issue Name']);
+                            const status = findColumn(row, ['Status', 'Issue Status', 'State', 'Progress', 'Resolution']);
+                            const kam = findColumn(row, ['KAM', 'Assigned To', 'Assigned', 'Email Address', 'Owner', 'Assignee', 'Team Member']);
+                            const date = findColumn(row, ['Date', 'Date Created', 'Created', 'Issue Date', 'Raised Date', 'Created Date']);
+                            
+                            return {
+                                ...row,
+                                '_mail': subject,
+                                '_status': status,
+                                '_kam': kam,
+                                '_date': date
+                            };
+                        }).filter(row => row['_mail']);
+                        
+                        console.log('Manual input - Loaded:', teamData.length, 'rows');
+                        
+                        if (teamData.length > 0) {
+                            updateMailCounts();
+                            applyMFFilters();
+                            document.getElementById('manualInputModal').style.display = 'none';
+                            document.getElementById('csvDataInput').value = '';
+                            showDataLoadSuccess();
+                            alert('✅ Data loaded successfully! Counts updated.');
+                        } else {
+                            alert('❌ No data found. Make sure your data has a subject/title column.');
+                        }
                     } else {
-                        alert('No valid data found in your input');
+                        alert('❌ No valid data found in your input');
                     }
                 }
             });
@@ -2520,14 +2565,12 @@
             
             // Count by status
             const solvedMails = teamData.filter(d => {
-                const solved = d['Status'] === 'Solved' || d['Status'] === 'SOLVED' || d['Solved'] === 'Yes' || d['Solved'] === 'TRUE';
+                const status = d['_status'] || d['Status'] || d['Issue Status'] || '';
+                const solved = status.toUpperCase().includes('SOLVED') || status === 'Solved' || status === 'SOLVED' || d['Solved'] === 'Yes';
                 return solved;
             }).length;
             
-            const pendingMails = teamData.filter(d => {
-                const solved = d['Status'] === 'Solved' || d['Status'] === 'SOLVED' || d['Solved'] === 'Yes' || d['Solved'] === 'TRUE';
-                return !solved;
-            }).length;
+            const pendingMails = totalMails - solvedMails;
             
             const solveRatio = totalMails > 0 ? Math.round((solvedMails / totalMails) * 100) : 0;
 
@@ -2538,16 +2581,26 @@
             document.getElementById('mfSolveRatio').textContent = solveRatio + '%';
 
             // Count by KAM
-            const ahmedMails = teamData.filter(d => 
-                (d['KAM'] || d['Assigned To'] || '').toUpperCase().includes('AHMED')
-            );
-            const nuruzzamanMails = teamData.filter(d => 
-                (d['KAM'] || d['Assigned To'] || '').toUpperCase().includes('NURUZZAMAN')
-            );
+            const ahmedMails = teamData.filter(d => {
+                const kam = d['_kam'] || d['KAM'] || d['Assigned To'] || '';
+                return kam.toUpperCase().includes('AHMED');
+            });
+            
+            const nuruzzamanMails = teamData.filter(d => {
+                const kam = d['_kam'] || d['KAM'] || d['Assigned To'] || '';
+                return kam.toUpperCase().includes('NURUZZAMAN') || kam.toUpperCase().includes('NAHID');
+            });
 
             // Update KAM cards
-            const ahmedSolved = ahmedMails.filter(d => d['Status'] === 'Solved' || d['Status'] === 'SOLVED' || d['Solved'] === 'Yes').length;
-            const nuruzzamanSolved = nuruzzamanMails.filter(d => d['Status'] === 'Solved' || d['Status'] === 'SOLVED' || d['Solved'] === 'Yes').length;
+            const ahmedSolved = ahmedMails.filter(d => {
+                const status = d['_status'] || d['Status'] || d['Issue Status'] || '';
+                return status.toUpperCase().includes('SOLVED') || status === 'Solved';
+            }).length;
+            
+            const nuruzzamanSolved = nuruzzamanMails.filter(d => {
+                const status = d['_status'] || d['Status'] || d['Issue Status'] || '';
+                return status.toUpperCase().includes('SOLVED') || status === 'Solved';
+            }).length;
 
             // Update Ahmed's card
             document.getElementById('mfAhmedRaised').textContent = ahmedMails.length;
