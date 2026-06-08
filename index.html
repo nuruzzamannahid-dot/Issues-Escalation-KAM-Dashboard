@@ -2,8 +2,11 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Carrybee Issue Tracker Dashboard</title>
+    <title>Carrybee Issue Tracker Dashboard v2.1</title>
     <script src="https://cdn.tailwindcss.com?v=2"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
@@ -1234,6 +1237,9 @@
     </div>
 
     <script>
+        // Version 2.1 - Mail Feedback Tracker with 5-item pagination
+        console.log('%c[Carrybee Dashboard] v2.1 loaded', 'color: #8b5cf6; font-weight: bold; font-size: 14px;');
+
         // ===================== AUTH CONFIG =====================
         const AUTH_USERS = [
             { username: 'admin', password: 'carrybee2024', role: 'admin' },
@@ -1859,12 +1865,12 @@
 
 
         // ===================== MAIL FEEDBACK TRACKER =====================
-        let mfCurrentPage = 1;
-        const MF_PAGE_SIZE = 5;
-        let mfFilteredData = [];
+        
 
         function renderMailFeedback() {
+            console.log('[MailFeedback] Rendering, teamData length:', teamData.length);
             const mfData = teamData.filter(d => d._irMail);
+            console.log('[MailFeedback] IR mail count:', mfData.length);
             const total = mfData.length;
             const solved = mfData.filter(d => d._solved).length;
             const pending = total - solved;
@@ -1904,6 +1910,7 @@
         }
 
         function applyMFFilters() {
+            console.log('[MailFeedback] Applying filters...');
             const search = document.getElementById('mfSearchInput').value.toLowerCase();
             const statusFilter = document.getElementById('mfStatusFilter').value;
             const kamFilter = document.getElementById('mfKAMFilter').value;
@@ -1953,6 +1960,7 @@
         }
 
         function renderMFTable() {
+            console.log('[MailFeedback] Rendering table, items:', mfFilteredData.length, 'page:', mfCurrentPage, 'pageSize:', MF_PAGE_SIZE);
             const tbody = document.getElementById('mfTableBody');
 
             if (mfFilteredData.length === 0) {
