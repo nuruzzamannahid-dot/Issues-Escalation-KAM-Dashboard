@@ -2387,6 +2387,72 @@
             renderMFTable();
         }
 
+        // Enhanced column detection with detailed logging
+        function detectColumns(firstRow) {
+            if (!firstRow) return {};
+            
+            const allKeys = Object.keys(firstRow);
+            console.log('All available columns in your data:', allKeys);
+            
+            const map = {};
+            
+            // Find Subject/Mail/Issue column - be very flexible
+            const subjectMatches = allKeys.filter(k => {
+                const lower = k.toLowerCase();
+                return lower.includes('subject') || 
+                       lower.includes('issue') || 
+                       lower.includes('title') ||
+                       lower.includes('name') ||
+                       lower.includes('mail') ||
+                       lower.includes('summary') ||
+                       lower.includes('description');
+            });
+            map.subject = subjectMatches[0] || allKeys[0];
+            
+            // Find Status column
+            const statusMatches = allKeys.filter(k => {
+                const lower = k.toLowerCase();
+                return lower.includes('status') || 
+                       lower.includes('state') ||
+                       lower.includes('progress') ||
+                       lower.includes('resolution');
+            });
+            map.status = statusMatches[0] || '';
+            
+            // Find KAM/Owner column
+            const kamMatches = allKeys.filter(k => {
+                const lower = k.toLowerCase();
+                return lower.includes('kam') || 
+                       lower.includes('assigned') ||
+                       lower.includes('owner') ||
+                       lower.includes('email') ||
+                       lower.includes('assignee') ||
+                       lower.includes('person') ||
+                       lower.includes('member') ||
+                       lower.includes('team');
+            });
+            map.kam = kamMatches[0] || '';
+            
+            // Find Date column
+            const dateMatches = allKeys.filter(k => {
+                const lower = k.toLowerCase();
+                return lower.includes('date') || 
+                       lower.includes('created') ||
+                       lower.includes('time') ||
+                       lower.includes('timestamp');
+            });
+            map.date = dateMatches[0] || '';
+            
+            console.log('✅ Detected column mapping:', {
+                'Subject column': map.subject,
+                'Status column': map.status,
+                'KAM column': map.kam,
+                'Date column': map.date
+            });
+            
+            return map;
+        }
+
         // Helper function to find column by various possible names
         function findColumn(row, possibleNames) {
             if (!row) return null;
@@ -2437,14 +2503,18 @@
                     header: true,
                     skipEmptyLines: true,
                     complete: function(results) {
-                        console.log('Parsed rows:', results.data.length);
+                        console.log('📊 Parsed rows:', results.data.length);
+                        
                         if (results.data && results.data.length > 0) {
-                            // Map column names more flexibly
+                            // Detect columns from the first row
+                            const colMap = detectColumns(results.data[0]);
+                            
+                            // Map data using detected columns
                             teamData = results.data.map(row => {
-                                const subject = findColumn(row, ['Mail Subject', 'Subject', 'Issue', 'Issue Summary', 'Title', 'Name']);
-                                const status = findColumn(row, ['Status', 'Issue Status', 'State', 'Progress']);
-                                const kam = findColumn(row, ['KAM', 'Assigned To', 'Assigned', 'Email Address', 'Owner', 'Assignee']);
-                                const date = findColumn(row, ['Date', 'Date Created', 'Created', 'Issue Date', 'Raised Date']);
+                                const subject = row[colMap.subject];
+                                const status = row[colMap.status] || '';
+                                const kam = row[colMap.kam] || '';
+                                const date = row[colMap.date] || '';
                                 
                                 return {
                                     ...row,
@@ -2453,25 +2523,30 @@
                                     '_kam': kam,
                                     '_date': date
                                 };
-                            }).filter(row => row['_mail']);
+                            }).filter(row => row['_mail'] && String(row['_mail']).trim());
                             
-                            console.log('Filtered data:', teamData.length);
-                            console.log('Sample row:', teamData[0]);
+                            console.log('✅ After filtering:', teamData.length, 'valid rows');
                             
                             if (teamData.length > 0) {
+                                console.log('📈 Sample data:',  {
+                                    subject: teamData[0]._mail,
+                                    status: teamData[0]._status,
+                                    kam: teamData[0]._kam
+                                });
                                 updateMailCounts();
                                 applyMFFilters();
                                 showDataLoadSuccess();
                             } else {
-                                console.warn('No data with subject column found');
+                                console.warn('⚠️ No rows with subject data found');
                                 showManualDataInput();
                             }
                         } else {
+                            console.warn('⚠️ No data rows found');
                             showManualDataInput();
                         }
                     },
                     error: function(err) {
-                        console.error('CSV Parse Error:', err);
+                        console.error('❌ CSV Parse Error:', err);
                         showManualDataInput();
                     }
                 });
@@ -2518,12 +2593,17 @@
                 skipEmptyLines: true,
                 complete: function(results) {
                     if (results.data && results.data.length > 0) {
-                        // Map column names more flexibly
+                        console.log('📊 Manual input - Parsed:', results.data.length, 'rows');
+                        
+                        // Detect columns from the first row
+                        const colMap = detectColumns(results.data[0]);
+                        
+                        // Map data using detected columns
                         teamData = results.data.map(row => {
-                            const subject = findColumn(row, ['Mail Subject', 'Subject', 'Issue', 'Issue Summary', 'Title', 'Name', 'Issue Name']);
-                            const status = findColumn(row, ['Status', 'Issue Status', 'State', 'Progress', 'Resolution']);
-                            const kam = findColumn(row, ['KAM', 'Assigned To', 'Assigned', 'Email Address', 'Owner', 'Assignee', 'Team Member']);
-                            const date = findColumn(row, ['Date', 'Date Created', 'Created', 'Issue Date', 'Raised Date', 'Created Date']);
+                            const subject = row[colMap.subject];
+                            const status = row[colMap.status] || '';
+                            const kam = row[colMap.kam] || '';
+                            const date = row[colMap.date] || '';
                             
                             return {
                                 ...row,
@@ -2532,9 +2612,9 @@
                                 '_kam': kam,
                                 '_date': date
                             };
-                        }).filter(row => row['_mail']);
+                        }).filter(row => row['_mail'] && String(row['_mail']).trim());
                         
-                        console.log('Manual input - Loaded:', teamData.length, 'rows');
+                        console.log('✅ Manual input - Valid rows:', teamData.length);
                         
                         if (teamData.length > 0) {
                             updateMailCounts();
