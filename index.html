@@ -1315,6 +1315,18 @@
             { name: 'Sheet 3', displayName: 'Central', url: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRsO79-0XIgKVkMKaIPjkBCp-npePr9WxH8LCX3jcPslWC4PlP4Qsa0qalr6FQuBZGmPsiLnkt2uv2S/pub?gid=0&single=true&output=csv' }
         ];
 
+        // ===================== MAIL FEEDBACK SHEET (Dedicated Spreadsheet) =====================
+        // Fetches from: https://docs.google.com/spreadsheets/d/1qWXu2WRA_D6qRwAK7mbGVJ-xHH2MHwqDHZiP5sO3Ofo
+        // Uses gviz URL (works for 'Anyone with link can view' sheets without needing Publish to Web)
+        // Falls back to export URL if gviz fails
+        const MF_SHEET_URLS = [
+            'https://docs.google.com/spreadsheets/d/1qWXu2WRA_D6qRwAK7mbGVJ-xHH2MHwqDHZiP5sO3Ofo/gviz/tq?tqx=out:csv',
+            'https://docs.google.com/spreadsheets/d/1qWXu2WRA_D6qRwAK7mbGVJ-xHH2MHwqDHZiP5sO3Ofo/export?format=csv&gid=0'
+        ];
+        let mfSheetData = [];   // rows from the dedicated Mail Feedback spreadsheet
+        let mfSheetLoaded = false;
+        let MF_COL_MAP = { kam: null, status: null, date: null, subject: null, solvedDate: null };
+
         const KAM_MAP = {
             'ahmed.asif@carrybee.com': 'AHMED ASIF RASHID',
             'ahmed.asif': 'AHMED ASIF RASHID',
@@ -1701,8 +1713,95 @@
             btn.disabled = false;
             btn.innerHTML = `<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg> Refresh`;
 
+            // Load Mail Feedback dedicated sheet in parallel
+            await loadMFSheet();
+
             renderDashboard();
             applyFilters();
+        }
+
+        // ===================== LOAD MAIL FEEDBACK SHEET =====================
+        async function loadMFSheet() {
+            let rows = null;
+            let usedUrl = '';
+            for (const url of MF_SHEET_URLS) {
+                try {
+                    const response = await fetch(url, { cache: 'no-store' });
+                    if (!response.ok) continue;
+                    const text = await response.text();
+                    // gviz sometimes returns HTML error pages — detect and skip
+                    if (text.trim().startsWith('<')) continue;
+                    const parsed = Papa.parse(text, { header: true, skipEmptyLines: true });
+                    if (parsed.data && parsed.data.length > 0) {
+                        rows = parsed.data;
+                        usedUrl = url;
+                        break;
+                    }
+                } catch(e) { console.warn('MF sheet URL failed:', url, e.message); }
+            }
+
+            if (!rows || rows.length === 0) {
+                console.warn('Mail Feedback sheet: no data loaded (sheet may not be published or shared publicly yet)');
+                mfSheetData = [];
+                mfSheetLoaded = false;
+                const debugBar = document.getElementById('debugBar');
+                if (debugBar && !debugBar.classList.contains('hidden')) {
+                    debugBar.innerHTML += '<span style="color:#f59e0b"> | MF Sheet: not reachable (publish to web or share publicly)</span>';
+                }
+                return;
+            }
+
+            const headers = Object.keys(rows[0]);
+            const h = headers.map(x => x.toLowerCase().trim());
+
+            // Auto-detect columns in MF sheet
+            MF_COL_MAP = { kam: null, status: null, date: null, subject: null, solvedDate: null };
+            for (let i = 0; i < h.length; i++) {
+                const col = h[i];
+                if (!MF_COL_MAP.kam && (col.includes('email') || col.includes('kam') || col.includes('assignee') || col.includes('agent') || col.includes('name') || col.includes('owner'))) MF_COL_MAP.kam = headers[i];
+                if (!MF_COL_MAP.status && (col.includes('status') || col.includes('state') || col.includes('solved') || col.includes('resolved') || col.includes('closed'))) MF_COL_MAP.status = headers[i];
+                if (!MF_COL_MAP.date && !col.includes('solved') && !col.includes('resolved') && !col.includes('closed') && (col.includes('date') || col.includes('created') || col.includes('raised') || col.includes('time') || col.includes('timestamp'))) MF_COL_MAP.date = headers[i];
+                if (!MF_COL_MAP.subject && (col.includes('subject') || col.includes('mail') || col.includes('title') || col.includes('topic') || col.includes('issue') || col.includes('description') || col.includes('detail'))) MF_COL_MAP.subject = headers[i];
+                if (!MF_COL_MAP.solvedDate && (col.includes('solved date') || col.includes('resolved date') || col.includes('closed date') || col.includes('completion') || (col.includes('solved') && col.includes('date')))) MF_COL_MAP.solvedDate = headers[i];
+            }
+
+            mfSheetData = rows.map(row => {
+                const kamVal = MF_COL_MAP.kam ? (row[MF_COL_MAP.kam] || '') : '';
+                let kamName = normalizeKAM(kamVal);
+                if (!TARGET_KAMS.includes(kamName)) {
+                    const found = findKAMInRow(row);
+                    if (found) kamName = found.kam;
+                }
+                const statusVal  = MF_COL_MAP.status    ? (row[MF_COL_MAP.status]    || '') : '';
+                const dateVal    = MF_COL_MAP.date       ? (row[MF_COL_MAP.date]       || '') : '';
+                const subjectVal = MF_COL_MAP.subject    ? (row[MF_COL_MAP.subject]    || '') : (Object.values(row).find(v => v && String(v).trim().length > 5) || '');
+                const solvedDateVal = MF_COL_MAP.solvedDate ? (row[MF_COL_MAP.solvedDate] || '') : '';
+                const solvedDate = parseDateRobust(solvedDateVal);
+                const solved = isSolved(statusVal, solvedDateVal, '') || !!solvedDate;
+                return {
+                    _kam: kamName,
+                    _status: statusVal,
+                    _solved: solved,
+                    _urgent: isUrgent(statusVal, row),
+                    _date: parseDateRobust(dateVal),
+                    _dateRaw: dateVal,
+                    _subject: String(subjectVal).trim(),
+                    _solvedDate: solvedDate,
+                    _solvedDateRaw: solvedDateVal,
+                    _irMail: true,
+                    _source: 'mf-sheet',
+                    _category: 'Mail Feedback',
+                    _raw: row
+                };
+            }).filter(d => TARGET_KAMS.includes(d._kam));
+
+            mfSheetLoaded = true;
+            console.log(`MF sheet loaded: ${mfSheetData.length} rows via ${usedUrl.includes('gviz') ? 'gviz' : 'export'} URL`);
+
+            const debugBar = document.getElementById('debugBar');
+            if (debugBar && !debugBar.classList.contains('hidden')) {
+                debugBar.innerHTML += `<span class="ok"> | MF Sheet: ${mfSheetData.length} rows</span>`;
+            }
         }
 
         // ===================== RENDER DASHBOARD =====================
@@ -2211,8 +2310,16 @@
 
 
         // ===================== MAIL FEEDBACK TRACKER =====================
+        // Merges: dedicated MF spreadsheet rows + irMail rows from the 3 issue sheets
+        function getMFData() {
+            const fromIssues = teamData.filter(d => d._irMail);
+            return (mfSheetLoaded && mfSheetData.length > 0)
+                ? [...mfSheetData, ...fromIssues]
+                : fromIssues;
+        }
+
         function renderMailFeedback() {
-            const mfData = teamData.filter(d => d._irMail);
+            const mfData = getMFData();
             const total = mfData.length;
             const solved = mfData.filter(d => d._solved).length;
             const pending = total - solved;
@@ -2253,7 +2360,7 @@
             const statusFilter = document.getElementById('mfStatusFilter').value;
             const kamFilter = document.getElementById('mfKAMFilter').value;
 
-            let data = teamData.filter(d => d._irMail);
+            let data = getMFData();
 
             if (search) {
                 data = data.filter(d => {
@@ -2330,25 +2437,28 @@
 
                 const dateStr = d._date ? d._date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZoneName: 'short' }) : (d._dateRaw || '-');
 
-                let subject = d._raw['Mail Subject'] || d._raw['Subject'] || d._raw['Issue'] || d._raw['Issue Details'] || d._category || '-';
+                // _subject is pre-extracted from MF sheet; fall back to raw column scan
+                let subject = d._subject || d._raw['Mail Subject'] || d._raw['Subject'] || d._raw['Issue'] || d._raw['Issue Details'] || d._category || '-';
                 if (subject === '-') subject = d._raw[COL_MAP.details || ''] || d._category || '-';
 
                 let solvedDateStr = '-';
-                let solvedDateObj = null;
+                let solvedDateObj = d._solvedDate || null;
                 if (d._solved) {
-                    const possibleSolvedCols = ['Solved Date', 'Resolved Date', 'Closed Date', 'Date Solved', 'Completion Date'];
-                    for (let col of possibleSolvedCols) {
-                        if (d._raw[col]) {
-                            const parsed = parseDateRobust(d._raw[col]);
-                            if (parsed) {
-                                solvedDateObj = parsed;
-                                solvedDateStr = parsed.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZoneName: 'short' });
-                                break;
+                    if (solvedDateObj) {
+                        solvedDateStr = solvedDateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                    } else {
+                        const possibleSolvedCols = ['Solved Date', 'Resolved Date', 'Closed Date', 'Date Solved', 'Completion Date'];
+                        for (let col of possibleSolvedCols) {
+                            if (d._raw[col]) {
+                                const parsed = parseDateRobust(d._raw[col]);
+                                if (parsed) {
+                                    solvedDateObj = parsed;
+                                    solvedDateStr = parsed.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                                    break;
+                                }
                             }
                         }
-                    }
-                    if (solvedDateStr === '-') {
-                        solvedDateStr = '<span style="color: #94a3b8; font-style: italic;">—</span>';
+                        if (solvedDateStr === '-') solvedDateStr = '<span style="color:#94a3b8;font-style:italic;">—</span>';
                     }
                 }
 
