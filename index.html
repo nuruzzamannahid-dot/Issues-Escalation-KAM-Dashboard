@@ -971,7 +971,6 @@
 
             <!-- MAIL FEEDBACK TRACKER SECTION -->
             <div class="card p-6" id="mailFeedbackSection">
-                <div id="dataLoadMessage"></div>
                 <div class="mail-feedback-title">Mail Feedback Tracker</div>
 
                 <!-- Summary Cards -->
@@ -1313,7 +1312,8 @@
         const SHEETS = [
             { name: 'Sheet 1', displayName: 'ISD', url: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRvcHh_-szyOevlR4V86qiagypaMcBaF-ikwfeMJ-vamXKQBH7jWaIrmajn9VdgE5xm78RN_L30O5_s/pub?output=csv' },
             { name: 'Sheet 2', displayName: 'OSD', url: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSAVNwzXLfSVFu4psJlhz7pqMKtEocVNUKChUbpRaFoXVxSric-zuGESs7GyT0R6DO_sF76RE951c3B/pub?output=csv' },
-            { name: 'Sheet 3', displayName: 'Central', url: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRsO79-0XIgKVkMKaIPjkBCp-npePr9WxH8LCX3jcPslWC4PlP4Qsa0qalr6FQuBZGmPsiLnkt2uv2S/pub?gid=0&single=true&output=csv' }
+            { name: 'Sheet 3', displayName: 'Central', url: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRsO79-0XIgKVkMKaIPjkBCp-npePr9WxH8LCX3jcPslWC4PlP4Qsa0qalr6FQuBZGmPsiLnkt2uv2S/pub?gid=0&single=true&output=csv' },
+            { name: 'Sheet 4', displayName: 'Mail Log', url: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRlViGGma2_xDruRqM8Y77VWWiO7OwvylvZP9UTD30uGPMOyn8C5Ceo1DzlBhHTsRT5kzKo3GqFo6Vg/pub?output=csv', isMailSheet: true }
         ];
 
         const KAM_MAP = {
@@ -1347,6 +1347,13 @@
 
             let d = new Date(str);
             if (!isNaN(d.getTime())) return d;
+
+            // dd-MMM-yyyy  e.g. "18-May-2026"
+            const dMonY = str.match(/^(\d{1,2})-([A-Za-z]{3,9})-(\d{4})$/);
+            if (dMonY) {
+                d = new Date(dMonY[1] + ' ' + dMonY[2] + ' ' + dMonY[3]);
+                if (!isNaN(d.getTime())) return d;
+            }
 
             const usMatch = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2}):(\d{2}))?/);
             if (usMatch) {
@@ -1543,7 +1550,8 @@
             const hasAnyComment = hasComment1 || hasComment2;
 
             if (status) {
-                const s = String(status).toLowerCase();
+                const s = String(status).toLowerCase().trim();
+                if (s === 'true' || s === '1') return true;
                 if (s.includes('solved') || s.includes('resolved') || s.includes('closed') || s.includes('done') || s.includes('complete')) return true;
             }
             if (hasAnyComment) return true;
@@ -1623,7 +1631,13 @@
                     const kamCol = sheetColMap.kam || headers[0];
                     let sheetTeamCount = 0;
 
+                    // Mail sheet only: override status column (auto-detect can't find "Slove")
+                    if (SHEETS[i].isMailSheet) sheetColMap.status = 'Slove';
+
                     rows.forEach(row => {
+                        // Mail sheet only: skip rows with no KAM email (blank/placeholder rows)
+                        if (SHEETS[i].isMailSheet && !String(row['KAM Mail'] || '').trim()) return;
+
                         let kamVal = row[kamCol];
                         let kamName = normalizeKAM(kamVal);
                         let foundCol = kamCol;
@@ -1660,7 +1674,7 @@
                             _category: categoryVal ? String(categoryVal).trim() : 'Uncategorized',
                             _date: parseDateRobust(dateVal),
                             _dateRaw: dateVal,
-                            _irMail: isIRMail(irVal),
+                            _irMail: SHEETS[i].isMailSheet ? true : isIRMail(irVal),
                             _opsReply: opsVal ? String(opsVal).trim() : '',
                             _comment1: comment1Val ? String(comment1Val).trim() : '',
                             _comment2: comment2Val ? String(comment2Val).trim() : '',
@@ -2254,45 +2268,35 @@
             const statusFilter = document.getElementById('mfStatusFilter').value;
             const kamFilter = document.getElementById('mfKAMFilter').value;
 
-            let data = teamData.filter(d => d._mail);
+            let data = teamData.filter(d => d._irMail);
 
             if (search) {
                 data = data.filter(d => {
-                    const searchableText = (d._mail || '') + ' ' + (d._status || '') + ' ' + (d._kam || '');
-                    return searchableText.toLowerCase().includes(search);
+                    const raw = d._raw;
+                    for (let key of Object.keys(raw)) {
+                        if (String(raw[key] || '').toLowerCase().includes(search)) return true;
+                    }
+                    return false;
                 });
             }
 
             if (statusFilter !== 'all') {
-                if (statusFilter === 'solved') {
-                    data = data.filter(d => {
-                        const status = (d._status || '').toUpperCase();
-                        return status.includes('SOLVED');
-                    });
-                }
-                else if (statusFilter === 'pending') {
-                    data = data.filter(d => {
-                        const status = (d._status || '').toUpperCase();
-                        return !status.includes('SOLVED');
-                    });
-                }
-                else if (statusFilter === 'urgent') {
-                    data = data.filter(d => {
-                        const status = (d._status || '').toUpperCase();
-                        return status.includes('URGENT');
-                    });
-                }
+                if (statusFilter === 'solved') data = data.filter(d => d._solved);
+                else if (statusFilter === 'pending') data = data.filter(d => !d._solved && !d._urgent);
+                else if (statusFilter === 'urgent') data = data.filter(d => d._urgent);
             }
 
-            if (kamFilter !== 'all') {
-                data = data.filter(d => {
-                    const kam = (d._kam || '').toUpperCase();
-                    const filterUpper = kamFilter.toUpperCase();
-                    return kam.includes('AHMED') ? filterUpper.includes('AHMED') : kam.includes('NURUZZAMAN') ? filterUpper.includes('NURUZZAMAN') : false;
-                });
-            }
+            if (kamFilter !== 'all') data = data.filter(d => d._kam === kamFilter);
 
-            mfFilteredData = data;
+            // Sort: Pending first (by date desc), then Solved (by date desc)
+            mfFilteredData = data.sort((a, b) => {
+                if (!a._solved && b._solved) return -1;
+                if (a._solved && !b._solved) return 1;
+                if (a._date && b._date) return b._date - a._date;
+                if (a._date && !b._date) return -1;
+                if (!a._date && b._date) return 1;
+                return 0;
+            });
             mfCurrentPage = 1;
             renderMFTable();
         }
@@ -2322,42 +2326,58 @@
             const pageData = mfFilteredData.slice(start, end);
 
             const bodyHTML = pageData.map((d, idx) => {
-                // Determine status
-                const statusUpper = (d._status || '').toUpperCase();
-                const isSolved = statusUpper.includes('SOLVED');
-                const isUrgent = statusUpper.includes('URGENT');
-                
                 let statusClass = 'mf-status-pending';
                 let statusText = 'Pending';
                 let statusIcon = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>';
-                
-                if (isSolved) {
+                if (d._solved) {
                     statusClass = 'mf-status-solved';
                     statusText = 'Solved';
                     statusIcon = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>';
-                } else if (isUrgent) {
+                } else if (d._urgent) {
                     statusClass = 'mf-status-urgent';
                     statusText = 'Urgent';
                     statusIcon = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/></svg>';
                 }
 
-                const kamUpper = (d._kam || '').toUpperCase();
-                const isAhmed = kamUpper.includes('AHMED');
-                const kamClass = isAhmed ? 'mf-kam-tag-purple' : 'mf-kam-tag-green';
-                const kamInitials = isAhmed ? 'AA' : 'NN';
-                const kamShort = isAhmed ? 'Ahmed Asif' : 'Nuruzzaman';
+                const kamClass = d._kam === 'AHMED ASIF RASHID' ? 'mf-kam-tag-purple' : 'mf-kam-tag-green';
+                const kamInitials = d._kam === 'AHMED ASIF RASHID' ? 'AA' : 'NN';
+                const kamShort = d._kam === 'AHMED ASIF RASHID' ? 'Ahmed Asif' : 'Nuruzzaman';
 
-                const dateStr = d._date ? (typeof d._date === 'string' ? d._date : d._date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' })) : '-';
-                const subject = d._mail || '-';
+                const dateStr = d._date ? d._date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZoneName: 'short' }) : (d._dateRaw || '-');
+
+                let subject = d._raw['Mail Subject Line'] || d._raw['Mail Subject'] || d._raw['Subject'] || d._raw['Issue'] || d._raw['Issue Details'] || d._category || '-';
+                if (subject === '-') subject = d._raw[COL_MAP.details || ''] || d._category || '-';
+
+                let solvedDateStr = '-';
+                let solvedDateObj = null;
+                if (d._solved) {
+                    const possibleSolvedCols = ['Slove date', 'Solved Date', 'Resolved Date', 'Closed Date', 'Date Solved', 'Completion Date'];
+                    for (let col of possibleSolvedCols) {
+                        if (d._raw[col]) {
+                            const parsed = parseDateRobust(d._raw[col]);
+                            if (parsed) {
+                                solvedDateObj = parsed;
+                                solvedDateStr = parsed.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZoneName: 'short' });
+                                break;
+                            }
+                        }
+                    }
+                    if (solvedDateStr === '-') {
+                        solvedDateStr = '<span style="color: #94a3b8; font-style: italic;">—</span>';
+                    }
+                }
+
+                const gap = getResolutionGap(d._date, solvedDateObj, d._solved);
+                const gapClass = d._solved ? 'mf-gap-solved' : 'mf-gap';
 
                 return '<tr>' +
                     '<td><span class="text-xs text-slate-400">' + (start + idx + 1) + '</span></td>' +
                     '<td><span class="text-xs text-slate-600">' + dateStr + '</span></td>' +
-                    '<td><span class="mf-kam-tag ' + kamClass + '"><span style="width:18px;height:18px;border-radius:50%;background:' + (isAhmed ? '#8b5cf6' : '#10b981') + ';color:white;font-size:9px;display:inline-flex;align-items:center;justify-content:center;font-weight:700;">' + kamInitials + '</span>' + kamShort + '</span></td>' +
+                    '<td><span class="mf-kam-tag ' + kamClass + '"><span style="width:18px;height:18px;border-radius:50%;background:' + (d._kam === 'AHMED ASIF RASHID' ? '#8b5cf6' : '#10b981') + ';color:white;font-size:9px;display:inline-flex;align-items:center;justify-content:center;font-weight:700;">' + kamInitials + '</span>' + kamShort + '</span></td>' +
                     '<td><span class="text-xs text-slate-700 font-medium">' + subject + '</span></td>' +
                     '<td><span class="mf-status-badge ' + statusClass + '">' + statusIcon + statusText + '</span></td>' +
-                    '<td><span class="text-xs text-slate-500">-</span></td>' +
-                    '<td><span class="mf-gap">-</span></td>' +
+                    '<td><span class="text-xs text-slate-500">' + solvedDateStr + '</span></td>' +
+                    '<td><span class="mf-gap ' + gapClass + '">' + gap + '</span></td>' +
                 '</tr>';
             }).join('');
 
@@ -2387,353 +2407,11 @@
             renderMFTable();
         }
 
-        // Enhanced column detection with detailed logging
-        function detectColumns(firstRow) {
-            if (!firstRow) return {};
-            
-            const allKeys = Object.keys(firstRow);
-            console.log('All available columns in your data:', allKeys);
-            
-            const map = {};
-            
-            // Find Subject/Mail/Issue column - be very flexible
-            const subjectMatches = allKeys.filter(k => {
-                const lower = k.toLowerCase();
-                return lower.includes('subject') || 
-                       lower.includes('issue') || 
-                       lower.includes('title') ||
-                       lower.includes('name') ||
-                       lower.includes('mail') ||
-                       lower.includes('summary') ||
-                       lower.includes('description');
-            });
-            map.subject = subjectMatches[0] || allKeys[0];
-            
-            // Find Status column
-            const statusMatches = allKeys.filter(k => {
-                const lower = k.toLowerCase();
-                return lower.includes('status') || 
-                       lower.includes('state') ||
-                       lower.includes('progress') ||
-                       lower.includes('resolution');
-            });
-            map.status = statusMatches[0] || '';
-            
-            // Find KAM/Owner column
-            const kamMatches = allKeys.filter(k => {
-                const lower = k.toLowerCase();
-                return lower.includes('kam') || 
-                       lower.includes('assigned') ||
-                       lower.includes('owner') ||
-                       lower.includes('email') ||
-                       lower.includes('assignee') ||
-                       lower.includes('person') ||
-                       lower.includes('member') ||
-                       lower.includes('team');
-            });
-            map.kam = kamMatches[0] || '';
-            
-            // Find Date column
-            const dateMatches = allKeys.filter(k => {
-                const lower = k.toLowerCase();
-                return lower.includes('date') || 
-                       lower.includes('created') ||
-                       lower.includes('time') ||
-                       lower.includes('timestamp');
-            });
-            map.date = dateMatches[0] || '';
-            
-            console.log('✅ Detected column mapping:', {
-                'Subject column': map.subject,
-                'Status column': map.status,
-                'KAM column': map.kam,
-                'Date column': map.date
-            });
-            
-            return map;
-        }
-
-        // Helper function to find column by various possible names
-        function findColumn(row, possibleNames) {
-            if (!row) return null;
-            for (let name of possibleNames) {
-                if (row[name]) return row[name];
-                // Also try case-insensitive match
-                const found = Object.keys(row).find(key => key.toLowerCase() === name.toLowerCase());
-                if (found && row[found]) return row[found];
-            }
-            return null;
-        }
-
-        // ===================== DATA FETCHING =====================
-        async function fetchMailFeedbackData() {
-            try {
-                const sheetId = '1qWXu2WRA_D6qRwAK7mbGVJ-xHH2MHwqDHZiP5sO3Ofo';
-                
-                // Try multiple methods to fetch the data
-                let csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv`;
-                
-                console.log('Attempting to fetch from:', csvUrl);
-                
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 8000);
-                
-                const response = await fetch(csvUrl, {
-                    signal: controller.signal,
-                    mode: 'cors',
-                    headers: {
-                        'Accept': 'text/csv'
-                    }
-                });
-                
-                clearTimeout(timeoutId);
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                
-                const csvText = await response.text();
-                
-                if (!csvText || csvText.length < 10) {
-                    throw new Error('Empty or invalid CSV data received');
-                }
-                
-                // Parse CSV using PapaParse
-                Papa.parse(csvText, {
-                    header: true,
-                    skipEmptyLines: true,
-                    complete: function(results) {
-                        console.log('📊 Parsed rows:', results.data.length);
-                        
-                        if (results.data && results.data.length > 0) {
-                            // Detect columns from the first row
-                            const colMap = detectColumns(results.data[0]);
-                            
-                            // Map data using detected columns
-                            teamData = results.data.map(row => {
-                                const subject = row[colMap.subject];
-                                const status = row[colMap.status] || '';
-                                const kam = row[colMap.kam] || '';
-                                const date = row[colMap.date] || '';
-                                
-                                return {
-                                    ...row,
-                                    '_mail': subject,
-                                    '_status': status,
-                                    '_kam': kam,
-                                    '_date': date
-                                };
-                            }).filter(row => row['_mail'] && String(row['_mail']).trim());
-                            
-                            console.log('✅ After filtering:', teamData.length, 'valid rows');
-                            
-                            if (teamData.length > 0) {
-                                console.log('📈 Sample data:',  {
-                                    subject: teamData[0]._mail,
-                                    status: teamData[0]._status,
-                                    kam: teamData[0]._kam
-                                });
-                                updateMailCounts();
-                                applyMFFilters();
-                                showDataLoadSuccess();
-                            } else {
-                                console.warn('⚠️ No rows with subject data found');
-                                showManualDataInput();
-                            }
-                        } else {
-                            console.warn('⚠️ No data rows found');
-                            showManualDataInput();
-                        }
-                    },
-                    error: function(err) {
-                        console.error('❌ CSV Parse Error:', err);
-                        showManualDataInput();
-                    }
-                });
-            } catch (error) {
-                console.error('Error fetching sheet:', error.message);
-                showManualDataInput();
-            }
-        }
-
-        function showDataLoadSuccess() {
-            const message = document.getElementById('dataLoadMessage');
-            if (message) {
-                message.innerHTML = '<div style="background: #d4edda; color: #155724; padding: 12px; border-radius: 8px; margin-bottom: 16px; border: 1px solid #c3e6cb;">✓ Data loaded successfully from Google Sheet</div>';
-                setTimeout(() => {
-                    if (message.querySelector('div')) message.innerHTML = '';
-                }, 5000);
-            }
-        }
-
-        function showManualDataInput() {
-            console.warn('Could not fetch from Google Sheet. Showing manual input option.');
-            const message = document.getElementById('dataLoadMessage');
-            if (message) {
-                message.innerHTML = `
-                    <div style="background: #fff3cd; color: #856404; padding: 12px; border-radius: 8px; margin-bottom: 16px; border: 1px solid #ffeaa7;">
-                        ⚠️ Could not fetch from Google Sheet. 
-                        <button onclick="document.getElementById('manualInputModal').style.display='flex'" style="background: #ffc107; color: #333; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: 600;">
-                            Enter Data Manually
-                        </button>
-                    </div>
-                `;
-            }
-        }
-
-        function handleManualDataInput() {
-            const csvInput = document.getElementById('csvDataInput').value.trim();
-            if (!csvInput) {
-                alert('Please paste your data');
-                return;
-            }
-            
-            Papa.parse(csvInput, {
-                header: true,
-                skipEmptyLines: true,
-                complete: function(results) {
-                    if (results.data && results.data.length > 0) {
-                        console.log('📊 Manual input - Parsed:', results.data.length, 'rows');
-                        
-                        // Detect columns from the first row
-                        const colMap = detectColumns(results.data[0]);
-                        
-                        // Map data using detected columns
-                        teamData = results.data.map(row => {
-                            const subject = row[colMap.subject];
-                            const status = row[colMap.status] || '';
-                            const kam = row[colMap.kam] || '';
-                            const date = row[colMap.date] || '';
-                            
-                            return {
-                                ...row,
-                                '_mail': subject,
-                                '_status': status,
-                                '_kam': kam,
-                                '_date': date
-                            };
-                        }).filter(row => row['_mail'] && String(row['_mail']).trim());
-                        
-                        console.log('✅ Manual input - Valid rows:', teamData.length);
-                        
-                        if (teamData.length > 0) {
-                            updateMailCounts();
-                            applyMFFilters();
-                            document.getElementById('manualInputModal').style.display = 'none';
-                            document.getElementById('csvDataInput').value = '';
-                            showDataLoadSuccess();
-                            alert('✅ Data loaded successfully! Counts updated.');
-                        } else {
-                            alert('❌ No data found. Make sure your data has a subject/title column.');
-                        }
-                    } else {
-                        alert('❌ No valid data found in your input');
-                    }
-                }
-            });
-        }
-
-        function closeManualInputModal() {
-            document.getElementById('manualInputModal').style.display = 'none';
-        }
-
-        function updateMailCounts() {
-            if (!teamData || teamData.length === 0) return;
-
-            // Count total mails
-            const totalMails = teamData.length;
-            
-            // Count by status
-            const solvedMails = teamData.filter(d => {
-                const status = d['_status'] || d['Status'] || d['Issue Status'] || '';
-                const solved = status.toUpperCase().includes('SOLVED') || status === 'Solved' || status === 'SOLVED' || d['Solved'] === 'Yes';
-                return solved;
-            }).length;
-            
-            const pendingMails = totalMails - solvedMails;
-            
-            const solveRatio = totalMails > 0 ? Math.round((solvedMails / totalMails) * 100) : 0;
-
-            // Update summary cards
-            document.getElementById('mfTotalRaised').textContent = totalMails;
-            document.getElementById('mfPending').textContent = pendingMails;
-            document.getElementById('mfSolved').textContent = solvedMails;
-            document.getElementById('mfSolveRatio').textContent = solveRatio + '%';
-
-            // Count by KAM
-            const ahmedMails = teamData.filter(d => {
-                const kam = d['_kam'] || d['KAM'] || d['Assigned To'] || '';
-                return kam.toUpperCase().includes('AHMED');
-            });
-            
-            const nuruzzamanMails = teamData.filter(d => {
-                const kam = d['_kam'] || d['KAM'] || d['Assigned To'] || '';
-                return kam.toUpperCase().includes('NURUZZAMAN') || kam.toUpperCase().includes('NAHID');
-            });
-
-            // Update KAM cards
-            const ahmedSolved = ahmedMails.filter(d => {
-                const status = d['_status'] || d['Status'] || d['Issue Status'] || '';
-                return status.toUpperCase().includes('SOLVED') || status === 'Solved';
-            }).length;
-            
-            const nuruzzamanSolved = nuruzzamanMails.filter(d => {
-                const status = d['_status'] || d['Status'] || d['Issue Status'] || '';
-                return status.toUpperCase().includes('SOLVED') || status === 'Solved';
-            }).length;
-
-            // Update Ahmed's card
-            document.getElementById('mfAhmedRaised').textContent = ahmedMails.length;
-            document.getElementById('mfAhmedPending').textContent = ahmedMails.length - ahmedSolved;
-            document.getElementById('mfAhmedSolved').textContent = ahmedSolved;
-            const ahmedRatio = ahmedMails.length > 0 ? Math.round((ahmedSolved / ahmedMails.length) * 100) : 0;
-            document.getElementById('mfAhmedRatio').textContent = ahmedRatio + '%';
-            document.getElementById('mfAhmedProgress').style.width = ahmedRatio + '%';
-
-            // Update Nuruzzaman's card
-            document.getElementById('mfNahidRaised').textContent = nuruzzamanMails.length;
-            document.getElementById('mfNahidPending').textContent = nuruzzamanMails.length - nuruzzamanSolved;
-            document.getElementById('mfNahidSolved').textContent = nuruzzamanSolved;
-            const nuruzzamanRatio = nuruzzamanMails.length > 0 ? Math.round((nuruzzamanSolved / nuruzzamanMails.length) * 100) : 0;
-            document.getElementById('mfNahidRatio').textContent = nuruzzamanRatio + '%';
-            document.getElementById('mfNahidProgress').style.width = nuruzzamanRatio + '%';
-        }
-
         // ===================== INIT =====================
         initTheme();
         if (!checkAuth()) {
             document.getElementById('authUser').focus();
         }
-        
-        // Fetch mail feedback data on page load
-        window.addEventListener('load', function() {
-            setTimeout(fetchMailFeedbackData, 500);
-        });
     </script>
-
-    <!-- Manual Data Input Modal -->
-    <div id="manualInputModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 9999; align-items: center; justify-content: center;">
-        <div style="background: white; border-radius: 12px; padding: 30px; max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto;">
-            <div style="font-size: 20px; font-weight: 700; margin-bottom: 16px;">📊 Enter Mail Feedback Data</div>
-            <p style="color: #666; margin-bottom: 16px;">Copy your Google Sheet data (including headers) and paste it below:</p>
-            
-            <textarea id="csvDataInput" placeholder="Paste your data here (Excel/Sheets format or CSV)&#10;Example:&#10;Mail Subject,Status,KAM,Date&#10;Dashboard bug,Solved,Ahmed Asif Rashid,2024-01-15&#10;API issue,Pending,Nuruzzaman Nahid,2024-01-18" style="width: 100%; height: 300px; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-family: monospace; font-size: 12px; resize: vertical;"></textarea>
-            
-            <div style="margin-top: 20px; display: flex; gap: 10px;">
-                <button onclick="handleManualDataInput()" style="flex: 1; background: #3b82f6; color: white; border: none; padding: 12px; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 14px;">✓ Load Data</button>
-                <button onclick="closeManualInputModal()" style="flex: 1; background: #e2e8f0; color: #333; border: none; padding: 12px; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 14px;">Cancel</button>
-            </div>
-            
-            <div style="margin-top: 16px; padding: 12px; background: #f0f4f8; border-radius: 8px; font-size: 12px; color: #666;">
-                <strong>How to get your data:</strong><br>
-                1. Open your Google Sheet<br>
-                2. Select all data (Ctrl+A)<br>
-                3. Copy (Ctrl+C)<br>
-                4. Paste here<br><br>
-                <strong>Required columns:</strong> Mail Subject, Status, KAM<br>
-                <strong>Status values:</strong> Use "Solved" for completed items
-            </div>
-        </div>
-    </div>
 </body>
 </html>
