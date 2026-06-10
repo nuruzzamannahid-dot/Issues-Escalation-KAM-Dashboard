@@ -1312,8 +1312,7 @@
         const SHEETS = [
             { name: 'Sheet 1', displayName: 'ISD', url: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRvcHh_-szyOevlR4V86qiagypaMcBaF-ikwfeMJ-vamXKQBH7jWaIrmajn9VdgE5xm78RN_L30O5_s/pub?output=csv' },
             { name: 'Sheet 2', displayName: 'OSD', url: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSAVNwzXLfSVFu4psJlhz7pqMKtEocVNUKChUbpRaFoXVxSric-zuGESs7GyT0R6DO_sF76RE951c3B/pub?output=csv' },
-            { name: 'Sheet 3', displayName: 'Central', url: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRsO79-0XIgKVkMKaIPjkBCp-npePr9WxH8LCX3jcPslWC4PlP4Qsa0qalr6FQuBZGmPsiLnkt2uv2S/pub?gid=0&single=true&output=csv' },
-            { name: 'Sheet 4', displayName: 'Mail Log', url: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRlViGGma2_xDruRqM8Y77VWWiO7OwvylvZP9UTD30uGPMOyn8C5Ceo1DzlBhHTsRT5kzKo3GqFo6Vg/pub?output=csv', isMailSheet: true }
+            { name: 'Sheet 3', displayName: 'Central', url: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRsO79-0XIgKVkMKaIPjkBCp-npePr9WxH8LCX3jcPslWC4PlP4Qsa0qalr6FQuBZGmPsiLnkt2uv2S/pub?gid=0&single=true&output=csv' }
         ];
 
         const KAM_MAP = {
@@ -1328,6 +1327,7 @@
         let COL_MAP = { kam: null, status: null, category: null, date: null, irMail: null, consignment: null, details: null, opsReply: null, opsReplyCols: [] };
         let allData = [];
         let teamData = [];
+        let mailData = [];   // ← dedicated array for mail sheet, never touches allData/teamData
         let filteredData = [];
         let categoryChart = null;
         let dailyChart = null;
@@ -1550,8 +1550,7 @@
             const hasAnyComment = hasComment1 || hasComment2;
 
             if (status) {
-                const s = String(status).toLowerCase().trim();
-                if (s === 'true' || s === '1') return true;
+                const s = String(status).toLowerCase();
                 if (s.includes('solved') || s.includes('resolved') || s.includes('closed') || s.includes('done') || s.includes('complete')) return true;
             }
             if (hasAnyComment) return true;
@@ -1592,6 +1591,43 @@
         }
 
         // ===================== LOAD DATA =====================
+        // ── loadMailSheet: dedicated loader for the mail sheet, isolated from issues data ──
+        async function loadMailSheet() {
+            const MAIL_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRlViGGma2_xDruRqM8Y77VWWiO7OwvylvZP9UTD30uGPMOyn8C5Ceo1DzlBhHTsRT5kzKo3GqFo6Vg/pub?output=csv';
+            mailData = [];
+            try {
+                const res = await fetch(MAIL_URL, { cache: 'no-store' });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const text = await res.text();
+                const rows = Papa.parse(text, { header: true, skipEmptyLines: true }).data;
+                rows.forEach(row => {
+                    const kamEmail = String(row['KAM Mail'] || '').trim().toLowerCase();
+                    if (!kamEmail) return;                                         // skip empty rows
+                    const kamName = KAM_MAP[kamEmail] || KAM_MAP[kamEmail.split('@')[0]] || null;
+                    if (!kamName || !TARGET_KAMS.includes(kamName)) return;        // skip unknown KAMs
+                    const slove = String(row['Slove'] || '').toLowerCase().trim();
+                    mailData.push({
+                        _kam:      kamName,
+                        _date:     parseDateRobust(row['Date'] || ''),
+                        _dateRaw:  row['Date'] || '',
+                        _solved:   slove === 'true' || slove === '1',
+                        _urgent:   false,
+                        _irMail:   true,
+                        _category: 'Mail',
+                        _raw:      row
+                    });
+                });
+                // Append mail count to debug bar without touching existing content
+                const bar = document.getElementById('debugBar');
+                if (bar) {
+                    bar.innerHTML += ` <span class="ok" style="color:#22d3ee">Mail Log: ${mailData.length} rows</span>`;
+                }
+            } catch(e) {
+                console.error('Mail sheet load failed:', e.message);
+                const bar = document.getElementById('debugBar');
+                if (bar) bar.innerHTML += ` <span class="err">Mail Log: ERROR (${e.message})</span>`;
+            }
+        }
         async function loadAllSheets() {
             const btn = document.getElementById('refreshBtn');
             btn.disabled = true;
@@ -1631,13 +1667,7 @@
                     const kamCol = sheetColMap.kam || headers[0];
                     let sheetTeamCount = 0;
 
-                    // Mail sheet only: override status column (auto-detect can't find "Slove")
-                    if (SHEETS[i].isMailSheet) sheetColMap.status = 'Slove';
-
                     rows.forEach(row => {
-                        // Mail sheet only: skip rows with no KAM email (blank/placeholder rows)
-                        if (SHEETS[i].isMailSheet && !String(row['KAM Mail'] || '').trim()) return;
-
                         let kamVal = row[kamCol];
                         let kamName = normalizeKAM(kamVal);
                         let foundCol = kamCol;
@@ -1674,7 +1704,7 @@
                             _category: categoryVal ? String(categoryVal).trim() : 'Uncategorized',
                             _date: parseDateRobust(dateVal),
                             _dateRaw: dateVal,
-                            _irMail: SHEETS[i].isMailSheet ? true : isIRMail(irVal),
+                            _irMail: isIRMail(irVal),
                             _opsReply: opsVal ? String(opsVal).trim() : '',
                             _comment1: comment1Val ? String(comment1Val).trim() : '',
                             _comment2: comment2Val ? String(comment2Val).trim() : '',
@@ -1718,6 +1748,8 @@
 
             renderDashboard();
             applyFilters();
+            await loadMailSheet();   // load mail sheet separately — does not affect allData/teamData
+            renderMailFeedback();    // re-render mail section now that mailData is populated
         }
 
         // ===================== RENDER DASHBOARD =====================
@@ -2227,7 +2259,7 @@
 
         // ===================== MAIL FEEDBACK TRACKER =====================
         function renderMailFeedback() {
-            const mfData = teamData.filter(d => d._irMail);
+            const mfData = mailData;
             const total = mfData.length;
             const solved = mfData.filter(d => d._solved).length;
             const pending = total - solved;
@@ -2268,7 +2300,7 @@
             const statusFilter = document.getElementById('mfStatusFilter').value;
             const kamFilter = document.getElementById('mfKAMFilter').value;
 
-            let data = teamData.filter(d => d._irMail);
+            let data = mailData.slice();
 
             if (search) {
                 data = data.filter(d => {
