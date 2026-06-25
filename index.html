@@ -1324,7 +1324,7 @@
 
         const TARGET_KAMS = ['AHMED ASIF RASHID', 'NURUZZAMAN NAHID'];
 
-        let COL_MAP = { kam: null, status: null, category: null, date: null, irMail: null, consignment: null, details: null, opsReply: null, opsReplyCols: [] };
+        let COL_MAP = { kam: null, status: null, category: null, date: null, irMail: null, consignment: null, details: null, opsReply: null, opsReplyCols: [], concernHub: null };
         let allData = [];
         let teamData = [];
         let mailData = [];   // ← dedicated array for mail sheet, never touches allData/teamData
@@ -1425,7 +1425,7 @@
 
         function detectColumns(headers, sampleRows) {
             const h = headers.map(x => x.toLowerCase().trim());
-            const map = { kam: null, status: null, category: null, date: null, irMail: null, consignment: null, details: null, opsReply: null, opsReplyCols: [] };
+            const map = { kam: null, status: null, category: null, date: null, irMail: null, consignment: null, details: null, opsReply: null, opsReplyCols: [], concernHub: null };
 
             for (let i = 0; i < h.length; i++) {
                 const col = h[i];
@@ -1539,6 +1539,13 @@
             map.comment1 = map.opsReplyCols[0] || null;
             map.comment2 = map.opsReplyCols[1] || null;
             map.opsReply = map.opsReplyCols[0] || null;
+
+            for (let i = 0; i < h.length; i++) {
+                const col = h[i];
+                if (col.includes('concern') || col.includes('hub') || col === 'concern hub (copy exactly from system)' || col === 'concern hub') {
+                    map.concernHub = headers[i]; break;
+                }
+            }
 
             console.log('Detected columns:', { sheet: 'current', headers, detected: map });
             return map;
@@ -1661,7 +1668,8 @@
                         opsReplyCols: detected.opsReplyCols || [],
                         opsReply: detected.opsReply,
                         comment1: detected.comment1,
-                        comment2: detected.comment2
+                        comment2: detected.comment2,
+                        concernHub: detected.concernHub || COL_MAP.concernHub
                     };
 
                     const kamCol = sheetColMap.kam || headers[0];
@@ -1687,6 +1695,7 @@
                         const comment1Val = sheetColMap.comment1 ? (row[sheetColMap.comment1] || '') : '';
                         const comment2Val = sheetColMap.comment2 ? (row[sheetColMap.comment2] || '') : '';
                         const opsVal = String(comment1Val).trim() || String(comment2Val).trim();
+                        const concernHubVal = sheetColMap.concernHub ? (row[sheetColMap.concernHub] || '') : '';
 
                         if (detected.opsReplyCols && detected.opsReplyCols.length) {
                             const existing = new Set(COL_MAP.opsReplyCols || []);
@@ -1710,6 +1719,7 @@
                             _comment2: comment2Val ? String(comment2Val).trim() : '',
                             _sheet: SHEETS[i].name,
                             _sheetDisplay: SHEETS[i].displayName,
+                            _concernHub: concernHubVal ? String(concernHubVal).trim() : '',
                             _raw: row
                         });
 
@@ -2010,7 +2020,7 @@
             displayCols.forEach(col => {
                 headerHTML += `<th>${col}</th>`;
             });
-            headerHTML += '<th>Comments 1 (Ops End)</th><th>Comments 2 (Ops End)</th><th>Sheet</th>';
+            headerHTML += '<th>Comments 1 (Ops End)</th><th>Comments 2 (Ops End)</th><th>Concern Hub</th>';
             thead.innerHTML = headerHTML;
 
             const start = (currentPage - 1) * PAGE_SIZE;
@@ -2042,7 +2052,7 @@
                     ${cells}
                     <td><span class="text-xs text-slate-600">${comment1Text}</span></td>
                     <td><span class="text-xs text-slate-600">${comment2Text}</span></td>
-                    <td><span class="text-xs px-2 py-1 rounded-md bg-slate-100 text-slate-500 font-medium">${d._sheetDisplay}</span></td>
+                    <td><span class="text-xs px-2 py-1 rounded-md font-semibold" style="background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;letter-spacing:0.04em;">${d._concernHub || '-'}</span></td>
                 </tr>`;
             }).join('');
 
