@@ -1752,7 +1752,16 @@
                         if (TARGET_KAMS.includes(kamName)) sheetTeamCount++;
                     });
 
-                    debugInfo.push({ name: SHEETS[i].displayName, count: rowCount, teamCount: sheetTeamCount, status: 'ok', cols: { cat: sheetColMap.category, stat: sheetColMap.status } });
+                    // Collect raw KAM values for diagnosis
+                    const rawKamValues = [...new Set(rows.map(r => String(r[kamCol] || '').trim()).filter(Boolean))].slice(0, 10);
+                    const unmatchedKams = [...new Set(
+                        rows.map(r => {
+                            const raw = String(r[kamCol] || '').trim();
+                            const norm = normalizeKAM(raw);
+                            return TARGET_KAMS.includes(norm) ? null : raw;
+                        }).filter(Boolean)
+                    )].slice(0, 5);
+                    debugInfo.push({ name: SHEETS[i].displayName, count: rowCount, teamCount: sheetTeamCount, status: 'ok', cols: { cat: sheetColMap.category, stat: sheetColMap.status }, kamCol, rawKamValues, unmatchedKams });
                 } catch (e) {
                     errors.push(`${SHEETS[i].displayName}: ${e.message}`);
                     debugInfo.push({ name: SHEETS[i].displayName, count: 0, status: 'error', error: e.message });
@@ -1767,9 +1776,13 @@
             const debugHTML = debugInfo.map(d => {
                 if (d.status === 'error') return `<span class="err">${d.name}: ERROR (${d.error})</span>`;
                 if (d.status === 'empty') return `<span>${d.name}: 0 rows</span>`;
-                return `<span class="ok">${d.name}: ${d.count} rows${d.teamCount !== undefined ? ' (' + d.teamCount + ' team)' : ''}${d.cols ? ' [cat:'+(d.cols.cat||'none')+']' : ''}</span>`;
-            }).join('');
-            debugBar.innerHTML = debugHTML + `<span style="color:#94a3b8">| Total team: ${teamData.length}</span>`;
+                const unmatchedStr = d.unmatchedKams && d.unmatchedKams.length
+                    ? ` <span style="color:#f59e0b">⚠ unmatched KAMs: ${d.unmatchedKams.map(v => '"'+v+'"').join(', ')}</span>`
+                    : '';
+                const kamColStr = d.kamCol ? ` [KAM col: "${d.kamCol}"]` : '';
+                return `<span class="ok">${d.name}: ${d.count} rows (${d.teamCount} team)${kamColStr}</span>${unmatchedStr}`;
+            }).join(' | ');
+            debugBar.innerHTML = debugHTML + ` | <span style="color:#94a3b8">Total team: ${teamData.length}</span>`;
             debugBar.classList.remove('hidden');
 
             const cats = [...new Set(teamData.map(d => d._category).filter(c => c && c !== 'Uncategorized'))].sort();
