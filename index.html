@@ -1316,13 +1316,43 @@
         ];
 
         const KAM_MAP = {
+            // Email formats
             'ahmed.asif@carrybee.com': 'AHMED ASIF RASHID',
             'ahmed.asif': 'AHMED ASIF RASHID',
+            'asif.rashid@carrybee.com': 'AHMED ASIF RASHID',
+            'asif.rashid': 'AHMED ASIF RASHID',
             'nuruzzaman.nahid@carrybee.com': 'NURUZZAMAN NAHID',
-            'nuruzzaman.nahid': 'NURUZZAMAN NAHID'
+            'nuruzzaman.nahid': 'NURUZZAMAN NAHID',
+            // Name variations – Ahmed
+            'ahmed asif rashid': 'AHMED ASIF RASHID',
+            'ahmed asif': 'AHMED ASIF RASHID',
+            'ahmed.asif.rashid': 'AHMED ASIF RASHID',
+            'asif rashid': 'AHMED ASIF RASHID',
+            'a. asif rashid': 'AHMED ASIF RASHID',
+            'ahmed': 'AHMED ASIF RASHID',
+            'asif': 'AHMED ASIF RASHID',
+            'ar': 'AHMED ASIF RASHID',
+            'aa': 'AHMED ASIF RASHID',
+            // Name variations – Nahid
+            'nuruzzaman nahid': 'NURUZZAMAN NAHID',
+            'nuruzzaman': 'NURUZZAMAN NAHID',
+            'nahid': 'NURUZZAMAN NAHID',
+            'n. nahid': 'NURUZZAMAN NAHID',
+            'nn': 'NURUZZAMAN NAHID',
         };
 
-        const TARGET_KAMS = ['AHMED ASIF RASHID', 'NURUZZAMAN NAHID'];
+        function normalizeKAM(val) {
+            if (!val) return 'Unknown';
+            const clean = String(val).toLowerCase().trim();
+            const base = clean.split('@')[0];
+            // Direct map lookup
+            if (KAM_MAP[clean]) return KAM_MAP[clean];
+            if (KAM_MAP[base]) return KAM_MAP[base];
+            // Fuzzy: contains key words
+            if (clean.includes('ahmed') || clean.includes('asif') || clean.includes('rashid')) return 'AHMED ASIF RASHID';
+            if (clean.includes('nuruzzaman') || clean.includes('nahid')) return 'NURUZZAMAN NAHID';
+            return String(val).toUpperCase().trim();
+        }
 
         let COL_MAP = { kam: null, status: null, category: null, date: null, irMail: null, consignment: null, details: null, opsReply: null, opsReplyCols: [], concernHub: null };
         let allData = [];
@@ -1404,21 +1434,17 @@
             return Papa.parse(text, { header: true, skipEmptyLines: true }).data;
         }
 
-        function normalizeKAM(val) {
-            if (!val) return 'Unknown';
-            const clean = String(val).toLowerCase().trim();
-            const base = clean.split('@')[0];
-            return KAM_MAP[clean] || KAM_MAP[base] || String(val).toUpperCase();
-        }
-
         function findKAMInRow(row) {
             for (const key of Object.keys(row)) {
                 const val = String(row[key] || '').toLowerCase().trim();
                 if (!val) continue;
                 const base = val.split('@')[0];
-                if (KAM_MAP[val] || KAM_MAP[base]) {
-                    return { kam: KAM_MAP[val] || KAM_MAP[base], column: key };
-                }
+                if (KAM_MAP[val]) return { kam: KAM_MAP[val], column: key };
+                if (KAM_MAP[base]) return { kam: KAM_MAP[base], column: key };
+                if (val.includes('ahmed') || val.includes('asif') || val.includes('rashid'))
+                    return { kam: 'AHMED ASIF RASHID', column: key };
+                if (val.includes('nuruzzaman') || val.includes('nahid'))
+                    return { kam: 'NURUZZAMAN NAHID', column: key };
             }
             return null;
         }
