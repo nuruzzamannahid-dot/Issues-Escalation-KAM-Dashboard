@@ -123,13 +123,13 @@
         @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
         .details-cell { max-width: 350px; min-width: 200px; }
         .details-preview { line-height: 1.5; word-break: break-word; white-space: normal; }
-        .logo-img { height: 32px; width: auto; }
+        .logo-img { height: 28px; width: auto; max-width: 140px; object-fit: contain; }
         .theme-toggle {
-            width: 40px; height: 40px; border-radius: 10px;
+            width: 36px; height: 36px; border-radius: 10px;
             display: flex; align-items: center; justify-content: center;
             background: var(--bg-input); border: 1px solid var(--border-input);
             color: var(--text-secondary); cursor: pointer;
-            transition: all 0.2s;
+            transition: all 0.2s; flex-shrink: 0;
         }
         .theme-toggle:hover { background: var(--cb-yellow); color: var(--cb-black); border-color: var(--cb-yellow); }
         /* Smooth transitions for all themed elements */
@@ -142,7 +142,7 @@
 
     <!-- Sidebar -->
     <aside class="w-64 theme-transition border-r flex flex-col flex-shrink-0" style="background-color: var(--bg-sidebar); border-color: var(--border-color);">
-        <div class="p-6 flex items-center justify-between">
+        <div class="p-5 flex items-center justify-between gap-3">
             <img src="carrybee-logo.png" alt="CarryBee" class="logo-img">
             <button onclick="toggleTheme()" class="theme-toggle" title="Toggle Dark Mode">
                 <i class="fa-solid fa-moon" id="theme-icon"></i>
