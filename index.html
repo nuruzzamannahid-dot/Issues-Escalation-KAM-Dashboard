@@ -3,2498 +3,927 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Carrybee Issue Tracker Dashboard</title>
-    <script src="https://cdn.tailwindcss.com?v=2"></script>
+    <title>CarryBee | Issue Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.maateen.me/adorsho-lipi/font.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        * { font-family: 'Inter', sans-serif; }
-        body { background: #f0f4f8; }
-        .card { background: white; border-radius: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.04); }
-        .card-hover { transition: all 0.25s ease; }
-        .card-hover:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,0.08); }
-        .summary-card { border-top: 4px solid; }
-        .border-blue { border-color: #3b82f6; }
-        .border-green { border-color: #10b981; }
-        .border-amber { border-color: #f59e0b; }
-        .border-purple { border-color: #8b5cf6; }
-        .border-rose { border-color: #f43f5e; }
-        .avatar { width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; color: white; }
-        .avatar-ahmed { background: linear-gradient(135deg, #3b82f6, #2563eb); }
-        .avatar-nahid { background: linear-gradient(135deg, #10b981, #059669); }
-        .badge { padding: 4px 12px; border-radius: 8px; font-size: 12px; font-weight: 600; }
-        .badge-pink { background: #fce7f3; color: #be185d; border: 1px solid #fbcfe8; }
-        .stat-box { background: #f8fafc; border-radius: 12px; padding: 16px; text-align: center; }
-        .category-pill { background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 8px; padding: 6px 12px; font-size: 12px; color: #475569; font-weight: 500; }
-        .urgent-bar { background: linear-gradient(90deg, #fef3c7, #fffbeb); border: 1px solid #fde68a; border-radius: 10px; padding: 12px 16px; display: flex; align-items: center; gap: 8px; color: #b45309; font-size: 13px; font-weight: 600; }
-        .tab-btn { padding: 6px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; border: 1px solid #e2e8f0; background: white; color: #64748b; cursor: pointer; transition: all 0.2s; }
-        .tab-btn.active { background: #eff6ff; color: #3b82f6; border-color: #bfdbfe; }
-        .pulse-dot { width: 8px; height: 8px; border-radius: 50%; background: #10b981; animation: pulse 2s infinite; }
-        @keyframes pulse { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.5; transform: scale(0.8); } }
-        .loading-shimmer { background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: 8px; }
-        @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
-        .fade-in { animation: fadeIn 0.4s ease-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-        .chart-container { position: relative; height: 280px; }
-        .today-badge { background: #ecfdf5; color: #059669; border: 1px solid #a7f3d0; padding: 4px 12px; border-radius: 8px; font-size: 12px; font-weight: 700; }
-
-        .filter-pill {
-            padding: 8px 18px;
-            border-radius: 10px;
-            font-size: 13px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-            border: 1px solid #e2e8f0;
-            background: white;
-            color: #64748b;
+        @font-face {
+            font-family: 'Gilroy';
+            src: url('https://cdn.jsdelivr.net/gh/nickymarino/Gilroy/fonts/Gilroy-Regular.woff2') format('woff2'),
+                 url('https://cdn.jsdelivr.net/gh/nickymarino/Gilroy/fonts/Gilroy-Regular.woff') format('woff');
+            font-weight: 400; font-style: normal;
         }
-        .filter-pill.active {
-            background: #ecfdf5;
-            color: #059669;
-            border-color: #a7f3d0;
-            box-shadow: 0 0 0 3px rgba(16,185,129,0.1);
+        @font-face {
+            font-family: 'Gilroy';
+            src: url('https://cdn.jsdelivr.net/gh/nickymarino/Gilroy/fonts/Gilroy-Bold.woff2') format('woff2'),
+                 url('https://cdn.jsdelivr.net/gh/nickymarino/Gilroy/fonts/Gilroy-Bold.woff') format('woff');
+            font-weight: 700; font-style: normal;
         }
-        .filter-pill:hover:not(.active) {
-            background: #f8fafc;
-            border-color: #cbd5e1;
-        }
-        .search-input {
-            background: #f1f5f9;
-            border: 1px solid #e2e8f0;
-            border-radius: 10px;
-            padding: 10px 14px;
-            font-size: 13px;
-            color: #475569;
-            width: 100%;
-            outline: none;
-            transition: all 0.2s;
-        }
-        .search-input:focus {
-            border-color: #3b82f6;
-            background: white;
-            box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
-        }
-        .search-input::placeholder { color: #94a3b8; }
-        .dropdown-select {
-            background: white;
-            border: 1px solid #e2e8f0;
-            border-radius: 10px;
-            padding: 10px 14px;
-            font-size: 13px;
-            color: #475569;
-            outline: none;
-            cursor: pointer;
-            min-width: 140px;
-            appearance: none;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
-            background-repeat: no-repeat;
-            background-position: right 12px center;
-            padding-right: 32px;
-        }
-        .dropdown-select:focus {
-            border-color: #3b82f6;
-            box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
-        }
-        .issues-table {
-            width: 100%;
-            border-collapse: separate;
-            border-spacing: 0;
-        }
-        .issues-table th {
-            padding: 12px 16px;
-            text-align: left;
-            font-size: 11px;
-            font-weight: 700;
-            color: #94a3b8;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            border-bottom: 1px solid #f1f5f9;
-            background: #fafbfc;
-        }
-        .issues-table td {
-            padding: 14px 16px;
-            font-size: 13px;
-            color: #334155;
-            border-bottom: 1px solid #f8fafc;
-        }
-        .issues-table tr:hover td {
-            background: #f8fafc;
-        }
-        .kam-tag {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 4px 10px;
-            border-radius: 6px;
-            font-size: 12px;
-            font-weight: 600;
-        }
-        .kam-tag-ahmed { background: #eff6ff; color: #1d4ed8; }
-        .kam-tag-nahid { background: #ecfdf5; color: #047857; }
-        .status-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            display: inline-block;
-        }
-        .status-solved { background: #10b981; }
-        .status-pending { background: #f59e0b; }
-        .status-urgent { background: #f43f5e; }
-        .ops-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            padding: 3px 10px;
-            border-radius: 6px;
-            font-size: 11px;
-            font-weight: 600;
-        }
-        .ops-solved { background: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }
-        .ops-other { background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }
-        .empty-state {
-            padding: 60px 20px;
-            text-align: center;
-            color: #94a3b8;
-            font-size: 14px;
-            letter-spacing: 0.05em;
-        }
-        .section-title {
-            font-size: 12px;
-            font-weight: 800;
-            color: #10b981;
-            letter-spacing: 0.15em;
-            text-transform: uppercase;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        .section-title::before {
-            content: '';
-            width: 14px;
-            height: 14px;
-            background: #fbbf24;
-            border-radius: 2px;
-            display: inline-block;
-        }
-        .debug-bar {
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            padding: 8px 12px;
-            font-size: 11px;
-            color: #64748b;
-            font-family: monospace;
-        }
-        .debug-bar span { margin-right: 12px; }
-        .debug-bar .ok { color: #059669; }
-        .debug-bar .err { color: #dc2626; }
-
-        /* ===== DARK MODE TOGGLE SWITCH ===== */
-        .theme-toggle {
-            position: relative;
-            width: 52px;
-            height: 28px;
-            border-radius: 14px;
-            background: #e2e8f0;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            border: 2px solid #cbd5e1;
-            display: flex;
-            align-items: center;
-            padding: 2px;
-        }
-        .theme-toggle.dark {
-            background: #334155;
-            border-color: #475569;
-        }
-        .theme-toggle .toggle-knob {
-            width: 22px;
-            height: 22px;
-            border-radius: 50%;
-            background: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
-            box-shadow: 0 1px 3px rgba(0,0,0,0.15);
-            font-size: 12px;
-        }
-        .theme-toggle.dark .toggle-knob {
-            transform: translateX(24px);
-            background: #1e293b;
-        }
-        .theme-toggle .sun-icon { display: block; }
-        .theme-toggle .moon-icon { display: none; }
-        .theme-toggle.dark .sun-icon { display: none; }
-        .theme-toggle.dark .moon-icon { display: block; }
-
-        /* ===== AUTH LOGIN SCREEN ===== */
-        .auth-overlay {
-            position: fixed;
-            inset: 0;
-            background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%);
-            z-index: 9999;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-        }
-        .auth-box {
-            background: white;
-            border-radius: 20px;
-            padding: 40px;
-            width: 100%;
-            max-width: 420px;
-            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
-            animation: authSlide 0.5s ease-out;
-        }
-        @keyframes authSlide {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .auth-logo {
-            width: 56px;
-            height: 56px;
-            border-radius: 14px;
-            background: linear-gradient(135deg, #3b82f6, #2563eb);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 24px;
-            margin-bottom: 24px;
-        }
-        .auth-input {
-            width: 100%;
-            padding: 12px 16px;
-            border-radius: 10px;
-            border: 1.5px solid #e2e8f0;
-            font-size: 14px;
-            outline: none;
-            transition: all 0.2s;
-            background: #f8fafc;
-        }
-        .auth-input:focus {
-            border-color: #3b82f6;
-            background: white;
-            box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
-        }
-        .auth-btn {
-            width: 100%;
-            padding: 12px;
-            border-radius: 10px;
-            background: #3b82f6;
-            color: white;
-            font-weight: 700;
-            font-size: 14px;
-            border: none;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        .auth-btn:hover { background: #2563eb; }
-        .auth-btn:active { transform: scale(0.98); }
-        .auth-error {
-            color: #dc2626;
-            font-size: 13px;
-            font-weight: 600;
-            text-align: center;
-            margin-top: 12px;
-            display: none;
-        }
-        .auth-remember {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 13px;
-            color: #64748b;
-            cursor: pointer;
-        }
-        .auth-remember input {
-            width: 16px;
-            height: 16px;
-            accent-color: #3b82f6;
-            cursor: pointer;
-        }
-
-        /* Dark Mode Variables */
         :root {
-            --bg-body: #f0f4f8;
+            --cb-yellow: #FFCC00;
+            --cb-black: #333132;
+            /* LIGHT MODE (default) */
+            --bg-body: #f3f4f6;
+            --bg-sidebar: #ffffff;
+            --bg-header: rgba(255,255,255,0.8);
             --bg-card: #ffffff;
-            --text-primary: #1e293b;
-            --text-secondary: #64748b;
-            --text-muted: #94a3b8;
-            --border-color: #e2e8f0;
-            --input-bg: #f1f5f9;
-            --hover-bg: #f8fafc;
-            --badge-bg: #f1f5f9;
-            --stat-bg: #f8fafc;
-            --urgent-bg: linear-gradient(90deg, #fef3c7, #fffbeb);
-            --urgent-border: #fde68a;
-            --urgent-text: #b45309;
-            --table-header-bg: #fafbfc;
-            --table-row-hover: #f8fafc;
-            --debug-bg: #f8fafc;
-            --tab-active-bg: #eff6ff;
-            --tab-active-text: #3b82f6;
-            --tab-active-border: #bfdbfe;
-            --filter-active-bg: #ecfdf5;
-            --filter-active-text: #059669;
-            --filter-active-border: #a7f3d0;
-            --today-bg: #ecfdf5;
-            --today-text: #059669;
-            --today-border: #a7f3d0;
-            --modal-overlay: rgba(0,0,0,0.4);
-            --header-bg: #ffffff;
-            --header-border: #e2e8f0;
-            --toggle-bg: #e2e8f0;
-            --toggle-border: #cbd5e1;
-            --toggle-knob: #ffffff;
+            --bg-card-gradient-start: #ffffff;
+            --bg-card-gradient-end: #f9fafb;
+            --bg-input: #ffffff;
+            --bg-modal: #ffffff;
+            --bg-modal-content: #f9fafb;
+            --bg-table-hover: rgba(0,0,0,0.02);
+            --bg-tag-open: rgba(255,204,0,0.12);
+            --bg-tag-progress: rgba(59,130,246,0.1);
+            --bg-tag-resolved: rgba(34,197,94,0.1);
+            --bg-glass: rgba(255,255,255,0.7);
+            --text-primary: #111827;
+            --text-secondary: #4b5563;
+            --text-muted: #9ca3af;
+            --text-inverse: #ffffff;
+            --border-color: rgba(0,0,0,0.08);
+            --border-input: rgba(0,0,0,0.12);
+            --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+            --shadow-md: 0 4px 6px rgba(0,0,0,0.05);
+            --chart-grid: rgba(0,0,0,0.06);
+            --chart-tick: #6b7280;
+            --scroll-track: #e5e7eb;
+            --scroll-thumb: #d1d5db;
         }
-
-        html.dark {
-            --bg-body: #0f172a;
-            --bg-card: #1e293b;
-            --text-primary: #f1f5f9;
-            --text-secondary: #94a3b8;
-            --text-muted: #64748b;
-            --border-color: #334155;
-            --input-bg: #334155;
-            --hover-bg: #334155;
-            --badge-bg: #334155;
-            --stat-bg: #1e293b;
-            --urgent-bg: linear-gradient(90deg, #451a03, #78350f);
-            --urgent-border: #92400e;
-            --urgent-text: #fbbf24;
-            --table-header-bg: #1e293b;
-            --table-row-hover: #334155;
-            --debug-bg: #1e293b;
-            --tab-active-bg: #1e3a5f;
-            --tab-active-text: #60a5fa;
-            --tab-active-border: #3b82f6;
-            --filter-active-bg: #064e3b;
-            --filter-active-text: #34d399;
-            --filter-active-border: #059669;
-            --today-bg: #064e3b;
-            --today-text: #34d399;
-            --today-border: #059669;
-            --modal-overlay: rgba(0,0,0,0.7);
-            --header-bg: #1e293b;
-            --header-border: #334155;
-            --toggle-bg: #334155;
-            --toggle-border: #475569;
-            --toggle-knob: #1e293b;
+        [data-theme="dark"] {
+            --bg-body: #333132;
+            --bg-sidebar: #2a2829;
+            --bg-header: rgba(42,40,41,0.8);
+            --bg-card: #3a3839;
+            --bg-card-gradient-start: #3a3839;
+            --bg-card-gradient-end: #2a2829;
+            --bg-input: #3a3839;
+            --bg-modal: #1e293b;
+            --bg-modal-content: #333132;
+            --bg-table-hover: rgba(255,255,255,0.03);
+            --bg-tag-open: rgba(255,204,0,0.1);
+            --bg-tag-progress: rgba(59,130,246,0.1);
+            --bg-tag-resolved: rgba(34,197,94,0.1);
+            --bg-glass: rgba(51,49,50,0.6);
+            --text-primary: #f9fafb;
+            --text-secondary: #d1d5db;
+            --text-muted: #9ca3af;
+            --text-inverse: #111827;
+            --border-color: rgba(255,255,255,0.08);
+            --border-input: rgba(255,255,255,0.12);
+            --shadow-sm: 0 1px 2px rgba(0,0,0,0.2);
+            --shadow-md: 0 4px 6px rgba(0,0,0,0.2);
+            --chart-grid: rgba(255,255,255,0.05);
+            --chart-tick: #9ca3af;
+            --scroll-track: #2a2829;
+            --scroll-thumb: #555354;
         }
-
-        body { background: var(--bg-body); transition: background 0.3s ease; }
-        .card { background: var(--bg-card); transition: background 0.3s ease, border-color 0.3s ease; }
-        .summary-card { border-top: 4px solid; }
-        .text-slate-800 { color: var(--text-primary) !important; }
-        .text-slate-700 { color: var(--text-primary) !important; }
-        .text-slate-600 { color: var(--text-secondary) !important; }
-        .text-slate-500 { color: var(--text-muted) !important; }
-        .text-slate-400 { color: var(--text-muted) !important; }
-        .text-slate-300 { color: var(--text-muted) !important; }
-        .border-slate-200 { border-color: var(--border-color) !important; }
-        .border-slate-100 { border-color: var(--border-color) !important; }
-        .bg-slate-100 { background: var(--input-bg) !important; }
-        .bg-slate-50 { background: var(--input-bg) !important; }
-        .bg-white { background: var(--bg-card) !important; }
-        .hover\:bg-slate-50:hover { background: var(--hover-bg) !important; }
-        .hover\:bg-slate-200:hover { background: var(--hover-bg) !important; }
-        .search-input { background: var(--input-bg); border-color: var(--border-color); color: var(--text-secondary); }
-        .search-input:focus { background: var(--bg-card); }
-        .dropdown-select { background: var(--bg-card); border-color: var(--border-color); color: var(--text-secondary); }
-        .filter-pill { background: var(--bg-card); border-color: var(--border-color); color: var(--text-muted); }
-        .filter-pill.active { background: var(--filter-active-bg); color: var(--filter-active-text); border-color: var(--filter-active-border); }
-        .tab-btn { background: var(--bg-card); border-color: var(--border-color); color: var(--text-muted); }
-        .tab-btn.active { background: var(--tab-active-bg); color: var(--tab-active-text); border-color: var(--tab-active-border); }
-        .stat-box { background: var(--stat-bg); }
-        .category-pill { background: var(--badge-bg); border-color: var(--border-color); color: var(--text-secondary); }
-        .urgent-bar { background: var(--urgent-bg); border-color: var(--urgent-border); color: var(--urgent-text); }
-        .issues-table th { background: var(--table-header-bg); border-bottom-color: var(--border-color); color: var(--text-muted); }
-        .issues-table td { border-bottom-color: var(--border-color); color: var(--text-secondary); }
-        .issues-table tr:hover td { background: var(--table-row-hover); }
-        .debug-bar { background: var(--debug-bg); border-color: var(--border-color); }
-        .today-badge { background: var(--today-bg); color: var(--today-text); border-color: var(--today-border); }
-        .empty-state { color: var(--text-muted); }
-        header { background: var(--header-bg) !important; border-color: var(--header-border) !important; transition: background 0.3s ease, border-color 0.3s ease; }
-        #settingsModal > div:first-child { background: var(--modal-overlay); }
-        .theme-toggle { background: var(--toggle-bg); border-color: var(--toggle-border); }
-        .theme-toggle .toggle-knob { background: var(--toggle-knob); }
-
-        /* ===== IR PAGINATION ===== */
-        .ir-page-btn {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            min-width: 36px;
-            height: 36px;
-            padding: 0 12px;
-            border-radius: 10px;
-            font-size: 13px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-            border: 1px solid var(--border-color);
-            background: var(--bg-card);
+        body {
+            font-family: 'Gilroy', 'Inter', sans-serif;
+            background-color: var(--bg-body);
             color: var(--text-secondary);
+            transition: background-color 0.3s ease, color 0.3s ease;
         }
-        .ir-page-btn:hover:not(:disabled) {
-            background: var(--hover-bg);
-            border-color: var(--text-muted);
+        .font-bangla { font-family: 'Li Ador Noirrit', 'Adorsho Lipi', sans-serif; }
+        .glass-panel {
+            background: var(--bg-glass);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border-color);
+            transition: background-color 0.3s ease, border-color 0.3s ease;
         }
-        .ir-page-btn.active {
-            background: #3b82f6;
-            color: white;
-            border-color: #3b82f6;
-            box-shadow: 0 2px 8px rgba(59,130,246,0.3);
+        .card-gradient {
+            background: linear-gradient(145deg, var(--bg-card-gradient-start) 0%, var(--bg-card-gradient-end) 100%);
+            transition: background 0.3s ease;
         }
-        .ir-page-btn:disabled {
-            opacity: 0.4;
-            cursor: not-allowed;
-        }
-        .ir-page-dots {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            min-width: 36px;
-            height: 36px;
-            font-size: 13px;
-            color: var(--text-muted);
-            font-weight: 600;
-        }
-    
-        /* ===== MAIL FEEDBACK TRACKER ===== */
-        .mail-feedback-title {
-            font-size: 11px;
-            font-weight: 800;
-            color: #8b5cf6;
-            letter-spacing: 0.2em;
-            text-transform: uppercase;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            margin-bottom: 16px;
-        }
-        .mail-feedback-title::before {
-            content: '';
-            width: 14px;
-            height: 14px;
-            background: #a78bfa;
-            border-radius: 2px;
-            display: inline-block;
-        }
-        .mf-card {
-            background: white;
-            border-radius: 16px;
-            padding: 20px 24px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.04);
-            transition: all 0.25s ease;
-        }
-        .mf-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 24px rgba(0,0,0,0.08);
-        }
-        .mf-card-purple { border-top: 4px solid #8b5cf6; }
-        .mf-card-amber { border-top: 4px solid #f59e0b; }
-        .mf-card-green { border-top: 4px solid #10b981; }
-        .mf-card-pink { border-top: 4px solid #ec4899; }
-        .mf-card-label {
-            font-size: 11px;
-            font-weight: 700;
-            color: #94a3b8;
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            margin-bottom: 8px;
-        }
-        .mf-card-value {
-            font-size: 32px;
-            font-weight: 800;
-            line-height: 1.2;
-        }
-        .mf-card-value-purple { color: #8b5cf6; }
-        .mf-card-value-amber { color: #f59e0b; }
-        .mf-card-value-green { color: #10b981; }
-        .mf-card-value-pink { color: #ec4899; }
-        .mf-kam-card {
-            background: white;
-            border-radius: 16px;
-            padding: 24px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.04);
-            border-left: 4px solid;
-            transition: all 0.25s ease;
-        }
-        .mf-kam-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 24px rgba(0,0,0,0.08);
-        }
-        .mf-kam-purple { border-left-color: #8b5cf6; }
-        .mf-kam-green { border-left-color: #10b981; }
-        .mf-kam-avatar {
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 700;
-            font-size: 12px;
-            color: white;
-            flex-shrink: 0;
-        }
-        .mf-kam-avatar-purple { background: linear-gradient(135deg, #8b5cf6, #7c3aed); }
-        .mf-kam-avatar-green { background: linear-gradient(135deg, #10b981, #059669); }
-        .mf-kam-name {
-            font-size: 14px;
-            font-weight: 700;
-            color: #1e293b;
-        }
-        .mf-kam-stat-box {
-            background: #f8fafc;
-            border-radius: 12px;
-            padding: 16px 12px;
-            text-align: center;
-            flex: 1;
-        }
-        .mf-kam-stat-value {
-            font-size: 24px;
-            font-weight: 800;
-            line-height: 1;
-        }
-        .mf-kam-stat-label {
-            font-size: 10px;
-            font-weight: 700;
-            color: #94a3b8;
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-            margin-top: 6px;
-        }
-        .mf-kam-ratio {
-            font-size: 12px;
-            font-weight: 600;
-            color: #64748b;
-            font-family: 'Courier New', monospace;
-        }
-        .mf-kam-progress {
-            height: 6px;
-            background: #f1f5f9;
-            border-radius: 3px;
-            overflow: hidden;
-            margin-top: 8px;
-        }
-        .mf-kam-progress-fill {
-            height: 100%;
-            border-radius: 3px;
-            transition: width 0.6s ease;
-        }
-        .mf-kam-progress-purple { background: linear-gradient(90deg, #8b5cf6, #a78bfa); }
-        .mf-kam-progress-green { background: linear-gradient(90deg, #10b981, #34d399); }
-        .mf-log-title {
-            font-size: 11px;
-            font-weight: 800;
-            color: #64748b;
-            letter-spacing: 0.15em;
-            text-transform: uppercase;
-            margin-bottom: 16px;
-        }
-        .mf-search {
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 10px;
-            padding: 10px 14px;
-            font-size: 13px;
-            color: #475569;
-            width: 100%;
-            outline: none;
+        .text-gold { color: var(--cb-yellow); }
+        .bg-gold { background-color: var(--cb-yellow); }
+        .border-gold { border-color: var(--cb-yellow); }
+        .status-open { background: var(--bg-tag-open); color: var(--cb-yellow); border: 1px solid rgba(255,204,0,0.25); }
+        .status-progress { background: var(--bg-tag-progress); color: #3b82f6; border: 1px solid rgba(59,130,246,0.25); }
+        .status-resolved { background: var(--bg-tag-resolved); color: #22c55e; border: 1px solid rgba(34,197,94,0.25); }
+        .tag-pill { font-size: 0.75rem; padding: 0.25rem 0.75rem; border-radius: 9999px; font-weight: 500; }
+        .sidebar-item { color: var(--text-muted); transition: all 0.2s; }
+        .sidebar-item:hover { background: rgba(255,204,0,0.05); color: var(--text-secondary); }
+        .sidebar-item.active { background: rgba(255,204,0,0.12); color: var(--cb-yellow); border-right: 3px solid var(--cb-yellow); }
+        .hover-row:hover { background: var(--bg-table-hover); }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: var(--scroll-track); }
+        ::-webkit-scrollbar-thumb { background: var(--scroll-thumb); border-radius: 4px; }
+        .modal-overlay { background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); }
+        .chart-container { position: relative; height: 250px; width: 100%; }
+        .fade-in { animation: fadeIn 0.5s ease-in; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .loading-spinner { border: 3px solid rgba(0,0,0,0.1); border-left-color: var(--cb-yellow); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
+        [data-theme="dark"] .loading-spinner { border-color: rgba(255,255,255,0.1); border-left-color: var(--cb-yellow); }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .toast { animation: slideIn 0.3s ease-out; }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        .details-cell { max-width: 350px; min-width: 200px; }
+        .details-preview { line-height: 1.5; word-break: break-word; white-space: normal; }
+        .logo-img { height: 32px; width: auto; }
+        .theme-toggle {
+            width: 40px; height: 40px; border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            background: var(--bg-input); border: 1px solid var(--border-input);
+            color: var(--text-secondary); cursor: pointer;
             transition: all 0.2s;
         }
-        .mf-search:focus {
-            border-color: #8b5cf6;
-            background: white;
-            box-shadow: 0 0 0 3px rgba(139,92,246,0.1);
+        .theme-toggle:hover { background: var(--cb-yellow); color: var(--cb-black); border-color: var(--cb-yellow); }
+        /* Smooth transitions for all themed elements */
+        .theme-transition {
+            transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
         }
-        .mf-search::placeholder { color: #94a3b8; }
-        .mf-select {
-            background: white;
-            border: 1px solid #e2e8f0;
-            border-radius: 10px;
-            padding: 10px 32px 10px 14px;
-            font-size: 13px;
-            color: #475569;
-            outline: none;
-            cursor: pointer;
-            appearance: none;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
-            background-repeat: no-repeat;
-            background-position: right 12px center;
-        }
-        .mf-select:focus {
-            border-color: #8b5cf6;
-            box-shadow: 0 0 0 3px rgba(139,92,246,0.1);
-        }
-        .mf-table {
-            width: 100%;
-            border-collapse: separate;
-            border-spacing: 0;
-        }
-        .mf-table th {
-            padding: 12px 16px;
-            text-align: left;
-            font-size: 10px;
-            font-weight: 800;
-            color: #94a3b8;
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-            border-bottom: 1px solid #f1f5f9;
-            background: #fafbfc;
-            white-space: nowrap;
-        }
-        .mf-table td {
-            padding: 14px 16px;
-            font-size: 13px;
-            color: #334155;
-            border-bottom: 1px solid #f8fafc;
-            vertical-align: top;
-        }
-        .mf-table tr:hover td {
-            background: #f8fafc;
-        }
-        .mf-status-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 6px 14px;
-            border-radius: 8px;
-            font-size: 12px;
-            font-weight: 700;
-        }
-        .mf-status-solved {
-            background: #d1fae5;
-            color: #065f46;
-            border: 1px solid #a7f3d0;
-        }
-        .mf-status-pending {
-            background: #fef3c7;
-            color: #92400e;
-            border: 1px solid #fde68a;
-        }
-        .mf-status-urgent {
-            background: #fee2e2;
-            color: #991b1b;
-            border: 1px solid #fecaca;
-        }
-        .mf-gap {
-            font-size: 12px;
-            font-weight: 700;
-            color: #ef4444;
-            font-family: 'Courier New', monospace;
-        }
-        .mf-gap-solved {
-            color: #10b981;
-        }
-        .mf-kam-tag {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 4px 10px;
-            border-radius: 6px;
-            font-size: 12px;
-            font-weight: 600;
-        }
-        .mf-kam-tag-purple { background: #ede9fe; color: #5b21b6; }
-        .mf-kam-tag-green { background: #d1fae5; color: #065f46; }
-        .mf-empty {
-            padding: 60px 20px;
-            text-align: center;
-            color: #94a3b8;
-            font-size: 14px;
-        }
-        .mf-empty-icon {
-            font-size: 48px;
-            margin-bottom: 12px;
-            opacity: 0.4;
-        }
-        .mf-pagination-btn {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            min-width: 36px;
-            height: 36px;
-            padding: 0 12px;
-            border-radius: 10px;
-            font-size: 13px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-            border: 1px solid #e2e8f0;
-            background: white;
-            color: #64748b;
-        }
-        .mf-pagination-btn:hover:not(:disabled) {
-            background: #f8fafc;
-            border-color: #cbd5e1;
-        }
-        .mf-pagination-btn.active {
-            background: #8b5cf6;
-            color: white;
-            border-color: #8b5cf6;
-            box-shadow: 0 2px 8px rgba(139,92,246,0.3);
-        }
-        .mf-pagination-btn:disabled {
-            opacity: 0.4;
-            cursor: not-allowed;
-        }
-        html.dark .mf-card { background: var(--bg-card); }
-        html.dark .mf-kam-card { background: var(--bg-card); }
-        html.dark .mf-kam-stat-box { background: var(--stat-bg); }
-        html.dark .mf-kam-name { color: var(--text-primary); }
-        html.dark .mf-kam-ratio { color: var(--text-secondary); }
-        html.dark .mf-search { background: var(--input-bg); border-color: var(--border-color); color: var(--text-secondary); }
-        html.dark .mf-search:focus { background: var(--bg-card); }
-        html.dark .mf-select { background: var(--bg-card); border-color: var(--border-color); color: var(--text-secondary); }
-        html.dark .mf-table th { background: var(--table-header-bg); border-bottom-color: var(--border-color); color: var(--text-muted); }
-        html.dark .mf-table td { border-bottom-color: var(--border-color); color: var(--text-secondary); }
-        html.dark .mf-table tr:hover td { background: var(--table-row-hover); }
-        html.dark .mf-pagination-btn { background: var(--bg-card); border-color: var(--border-color); color: var(--text-secondary); }
-        html.dark .mf-pagination-btn:hover:not(:disabled) { background: var(--hover-bg); }
-        html.dark .mf-empty { color: var(--text-muted); }
-
-</style>
-<base target="_blank">
-<base target="_blank">
-<base target="_blank">
+    </style>
 </head>
-<body class="min-h-screen pb-10">
+<body class="h-screen flex overflow-hidden">
 
-    <!-- AUTHENTICATION OVERLAY -->
-    <div id="authOverlay" class="auth-overlay">
-        <div class="auth-box">
-            <div class="auth-logo">📋</div>
-            <h2 class="text-xl font-bold text-slate-800 mb-1">Issue Tracker</h2>
-            <p class="text-sm text-slate-500 mb-6">Authorized personnel only. Please sign in to continue.</p>
-            
-            <div class="space-y-4">
-                <div>
-                    <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1.5">Username</label>
-                    <input type="text" id="authUser" class="auth-input" placeholder="Enter username" autocomplete="off">
+    <!-- Sidebar -->
+    <aside class="w-64 theme-transition border-r flex flex-col flex-shrink-0" style="background-color: var(--bg-sidebar); border-color: var(--border-color);">
+        <div class="p-6 flex items-center justify-between">
+            <img src="carrybee-logo.png" alt="CarryBee" class="logo-img">
+            <button onclick="toggleTheme()" class="theme-toggle" title="Toggle Dark Mode">
+                <i class="fa-solid fa-moon" id="theme-icon"></i>
+            </button>
+        </div>
+
+        <nav class="flex-1 px-3 space-y-1 mt-2">
+            <p class="px-3 text-xs font-semibold uppercase tracking-wider mb-2" style="color: var(--text-muted);">Menu</p>
+            <a href="#" onclick="switchView('tracker')" id="nav-tracker" class="sidebar-item active flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium">
+                <i class="fa-solid fa-clipboard-list w-5 text-center"></i> Issue Tracker
+            </a>
+            <a href="#" onclick="switchView('analytics')" id="nav-analytics" class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium">
+                <i class="fa-solid fa-chart-pie w-5 text-center"></i> Analytics
+            </a>
+            <a href="#" onclick="showRaiseIssue()" class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium">
+                <i class="fa-solid fa-plus-circle w-5 text-center"></i> Raise Issue
+            </a>
+        </nav>
+
+        <div class="p-4 border-t" style="border-color: var(--border-color);">
+            <div class="glass-panel rounded-lg p-3">
+                <p class="text-xs mb-1" style="color: var(--text-muted);">Data Source</p>
+                <div class="flex items-center gap-2 text-xs" style="color: var(--text-secondary);">
+                    <i class="fa-brands fa-google-drive text-green-500"></i>
+                    <span class="truncate">Google Sheets</span>
                 </div>
-                <div>
-                    <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1.5">Password</label>
-                    <div style="position: relative;">
-                        <input type="password" id="authPass" class="auth-input" style="padding-right: 40px;" placeholder="Enter password" onkeydown="if(event.key==='Enter')doLogin()">
-                        <button type="button" onclick="togglePassword()" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); z-index: 10; cursor: pointer; background: none; border: none; padding: 0;" title="Show/Hide Password">
-                            <svg id="eyeIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-                            <svg id="eyeOffIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none;"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
-                        </button>
-                    </div>
-                </div>
-                <div class="flex items-center justify-between">
-                    <label class="auth-remember">
-                        <input type="checkbox" id="authRemember">
-                        <span>Keep me signed in</span>
-                    </label>
-                </div>
-                <button onclick="doLogin()" class="auth-btn">Sign In</button>
-                <div id="authError" class="auth-error">Invalid username or password</div>
-            </div>
-            
-            <div class="mt-6 pt-4 border-t border-slate-100 text-center">
-                <p class="text-xs text-slate-400">© Carrybee Operations</p>
             </div>
         </div>
-    </div>
+    </aside>
 
-    <!-- DASHBOARD (hidden until auth) -->
-    <div id="appContent" style="display:none">
+    <!-- Main Content -->
+    <main class="flex-1 flex flex-col overflow-hidden relative">
+
         <!-- Header -->
-        <header class="bg-white border-b border-slate-200 px-6 py-4 sticky top-0 z-50">
-            <div class="max-w-7xl mx-auto flex items-center justify-between">
-                <div class="flex items-center gap-3">
-                    <div class="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center text-white font-bold text-sm">📋</div>
-                    <div>
-                        <h1 class="text-lg font-bold text-slate-800 tracking-wide" style="letter-spacing: 0.15em; font-size: 13px;">ISSUE TRACKER</h1>
-                    </div>
-                </div>
-                <div class="flex items-center gap-4">
-                    <div class="flex items-center gap-2">
-                        <span class="pulse-dot"></span>
-                        <span id="lastUpdate" class="text-xs text-slate-500 font-medium">Loading...</span>
-                    </div>
-                    <button onclick="refreshAll()" id="refreshBtn" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg transition-colors flex items-center gap-2">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
-                        Refresh
-                    </button>
-                    <button onclick="openSettings()" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-semibold rounded-lg transition-colors">
-                        ⚙️ Settings
-                    </button>
-                    <button onclick="doLogout()" class="px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
-                        Logout
-                    </button>
-                    <button id="adminBtn" onclick="openAdminPanel()" class="px-3 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 text-xs font-semibold rounded-lg transition-colors hidden flex items-center gap-1.5">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
-                        Manage Users
-                    </button>
-                    
-                    <!-- Dark Mode Toggle -->
-                    <div class="theme-toggle" id="themeToggle" onclick="toggleDarkMode()" title="Toggle Dark Mode">
-                        <div class="toggle-knob">
-                            <span class="sun-icon">☀️</span>
-                            <span class="moon-icon">🌙</span>
-                        </div>
-                    </div>
-                </div>
+        <header class="h-16 border-b flex items-center justify-between px-8 backdrop-blur-sm z-10 theme-transition" style="background-color: var(--bg-header); border-color: var(--border-color);">
+            <div>
+                <h2 id="page-title" class="text-xl font-bold theme-transition" style="color: var(--text-primary);">Issue Tracker</h2>
+                <p id="last-refreshed" class="text-xs mt-0.5 theme-transition" style="color: var(--text-muted);">Last refreshed: Never</p>
             </div>
-            <div class="max-w-7xl mx-auto mt-2">
-                <div id="debugBar" class="debug-bar hidden"></div>
+            <div class="flex items-center gap-3">
+                <button onclick="fetchData()" class="px-4 py-2 rounded-lg text-sm font-medium transition-colors border flex items-center gap-2 theme-transition" style="background-color: var(--bg-input); color: var(--text-secondary); border-color: var(--border-input);">
+                    <i class="fa-solid fa-rotate-right" id="refresh-icon"></i> Refresh
+                </button>
+                <button onclick="exportCSV()" class="px-4 py-2 rounded-lg bg-gold hover:opacity-90 text-sm font-bold transition-colors flex items-center gap-2" style="color: var(--cb-black);">
+                    <i class="fa-solid fa-download"></i> Export CSV
+                </button>
             </div>
         </header>
 
-        <!-- Main Content -->
-        <main class="max-w-7xl mx-auto px-6 py-6 space-y-6">
-            <!-- Summary Cards -->
-            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4" id="summaryCards">
-                <div class="card summary-card border-blue p-5 card-hover">
-                    <div class="text-xs text-slate-500 font-semibold uppercase tracking-wider mb-2">Total Issues</div>
-                    <div class="loading-shimmer h-10 w-20"></div>
-                </div>
-                <div class="card summary-card border-green p-5 card-hover">
-                    <div class="text-xs text-slate-500 font-semibold uppercase tracking-wider mb-2">Solved</div>
-                    <div class="loading-shimmer h-10 w-20"></div>
-                </div>
-                <div class="card summary-card border-amber p-5 card-hover">
-                    <div class="text-xs text-slate-500 font-semibold uppercase tracking-wider mb-2">Solve Ratio</div>
-                    <div class="loading-shimmer h-10 w-20"></div>
-                </div>
-                <div class="card summary-card border-purple p-5 card-hover">
-                    <div class="text-xs text-slate-500 font-semibold uppercase tracking-wider mb-2">IR Mails</div>
-                    <div class="loading-shimmer h-10 w-20"></div>
-                </div>
-                <div class="card summary-card border-rose p-5 card-hover">
-                    <div class="text-xs text-slate-500 font-semibold uppercase tracking-wider mb-2">Urgent</div>
-                    <div class="loading-shimmer h-10 w-20"></div>
-                </div>
+        <!-- Content Scroll Area -->
+        <div class="flex-1 overflow-y-auto p-8 relative" id="main-content">
+
+            <!-- Loading State -->
+            <div id="loading-state" class="absolute inset-0 flex flex-col items-center justify-center z-20 theme-transition" style="background-color: var(--bg-body);">
+                <div class="loading-spinner mb-4"></div>
+                <p class="text-sm theme-transition" style="color: var(--text-muted);">Loading data from Google Sheets...</p>
             </div>
 
-            <!-- KAM Cards -->
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-5" id="kamCards">
-                <!-- Ahmed Card -->
-                <div class="card p-6 card-hover fade-in">
-                    <div class="flex items-center justify-between mb-5">
-                        <div class="flex items-center gap-4">
-                            <div class="avatar avatar-ahmed">AA</div>
-                            <div>
-                                <h3 class="font-bold text-slate-800 text-base">Ahmed Asif Rashid</h3>
-                                <p class="text-xs text-slate-400 mt-0.5">ASSISTANT MANAGER · CL-86026</p>
-                            </div>
-                        </div>
-                        <span class="badge badge-pink" id="ahmedRatio">--%</span>
-                    </div>
-                    <div class="grid grid-cols-4 gap-3 mb-5">
-                        <div class="stat-box"><div class="text-2xl font-bold text-blue-600" id="ahmedTotal">--</div><div class="text-xs text-slate-400 mt-1 font-medium">TOTAL</div></div>
-                        <div class="stat-box"><div class="text-2xl font-bold text-emerald-600" id="ahmedSolved">--</div><div class="text-xs text-slate-400 mt-1 font-medium">SOLVED</div></div>
-                        <div class="stat-box"><div class="text-2xl font-bold text-amber-500" id="ahmedPending">--</div><div class="text-xs text-slate-400 mt-1 font-medium">PENDING</div></div>
-                        <div class="stat-box"><div class="text-2xl font-bold text-purple-600" id="ahmedIR">--</div><div class="text-xs text-slate-400 mt-1 font-medium">IR MAILS</div></div>
-                    </div>
-                    <div class="mb-3">
-                        <div class="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-2">Top Categories</div>
-                        <div class="flex flex-wrap gap-2" id="ahmedCategories">
-                            <div class="loading-shimmer h-6 w-24"></div>
-                            <div class="loading-shimmer h-6 w-28"></div>
-                        </div>
-                    </div>
-                    <div class="urgent-bar" id="ahmedUrgent" style="display:none">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"></path></svg>
-                        <span>-- urgent issues</span>
-                    </div>
-                </div>
+            <!-- VIEW: Issue Tracker -->
+            <div id="view-tracker" class="hidden fade-in space-y-6">
 
-                <!-- Nahid Card -->
-                <div class="card p-6 card-hover fade-in">
-                    <div class="flex items-center justify-between mb-5">
-                        <div class="flex items-center gap-4">
-                            <div class="avatar avatar-nahid">NN</div>
-                            <div>
-                                <h3 class="font-bold text-slate-800 text-base">Nuruzzaman Nahid</h3>
-                                <p class="text-xs text-slate-400 mt-0.5">ASSOCIATE · CL-84175</p>
-                            </div>
-                        </div>
-                        <span class="badge badge-pink" id="nahidRatio">--%</span>
-                    </div>
-                    <div class="grid grid-cols-4 gap-3 mb-5">
-                        <div class="stat-box"><div class="text-2xl font-bold text-blue-600" id="nahidTotal">--</div><div class="text-xs text-slate-400 mt-1 font-medium">TOTAL</div></div>
-                        <div class="stat-box"><div class="text-2xl font-bold text-emerald-600" id="nahidSolved">--</div><div class="text-xs text-slate-400 mt-1 font-medium">SOLVED</div></div>
-                        <div class="stat-box"><div class="text-2xl font-bold text-amber-500" id="nahidPending">--</div><div class="text-xs text-slate-400 mt-1 font-medium">PENDING</div></div>
-                        <div class="stat-box"><div class="text-2xl font-bold text-purple-600" id="nahidIR">--</div><div class="text-xs text-slate-400 mt-1 font-medium">IR MAILS</div></div>
-                    </div>
-                    <div class="mb-3">
-                        <div class="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-2">Top Categories</div>
-                        <div class="flex flex-wrap gap-2" id="nahidCategories">
-                            <div class="loading-shimmer h-6 w-24"></div>
-                            <div class="loading-shimmer h-6 w-28"></div>
+                <!-- Stats Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="card-gradient p-5 rounded-xl border relative overflow-hidden group theme-transition" style="border-color: var(--border-color); box-shadow: var(--shadow-sm);">
+                        <div class="absolute top-0 right-0 w-24 h-24 rounded-full -mr-8 -mt-8 transition-transform group-hover:scale-110" style="background: var(--border-color);"></div>
+                        <p class="text-xs font-semibold uppercase tracking-wider theme-transition" style="color: var(--text-muted);">Total Issues</p>
+                        <h3 class="text-3xl font-bold mt-1 theme-transition" style="color: var(--text-primary);" id="stat-total">0</h3>
+                        <p class="text-xs mt-1 theme-transition" style="color: var(--text-muted);">All time</p>
+                        <div class="absolute bottom-0 left-0 w-full h-1" style="background: var(--border-color);">
+                            <div class="h-full w-full theme-transition" style="background: var(--text-muted); opacity: 0.5;"></div>
                         </div>
                     </div>
-                    <div class="urgent-bar" id="nahidUrgent" style="display:none">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"></path></svg>
-                        <span>-- urgent issues</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Issues by Category Chart -->
-            <div class="card p-6">
-                <h3 class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4">Issues by Category</h3>
-                <div class="chart-container"><canvas id="categoryChart"></canvas></div>
-            </div>
-
-            <!-- Daily Issues Chart -->
-            <div class="card p-6">
-                <div class="flex items-center justify-between mb-4">
-                    <div class="flex items-center gap-3">
-                        <h3 class="text-xs font-bold text-slate-500 uppercase tracking-widest">Daily Issues — Last 7D</h3>
-                        <span class="today-badge" id="todayCount">TODAY: 0</span>
-                    </div>
-                    <div class="flex gap-2">
-                        <button class="tab-btn active" onclick="setPeriod('7d', this)">7D</button>
-                        <button class="tab-btn" onclick="setPeriod('30d', this)">30D</button>
-                        <button class="tab-btn" onclick="setPeriod('all', this)">ALL</button>
-                        <button class="tab-btn" onclick="setPeriod('member', this)">PER MEMBER</button>
-                    </div>
-                </div>
-                <div class="chart-container"><canvas id="dailyChart"></canvas></div>
-            </div>
-
-
-            <!-- MAIL FEEDBACK TRACKER SECTION -->
-            <div class="card p-6" id="mailFeedbackSection">
-                <div class="mail-feedback-title">Mail Feedback Tracker</div>
-
-                <!-- Summary Cards -->
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                    <div class="mf-card mf-card-purple">
-                        <div class="mf-card-label">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-10 7L2 7"/></svg>
-                            Total Raised
-                        </div>
-                        <div class="mf-card-value mf-card-value-purple" id="mfTotalRaised">0</div>
-                    </div>
-                    <div class="mf-card mf-card-amber">
-                        <div class="mf-card-label">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
-                            Pending
-                        </div>
-                        <div class="mf-card-value mf-card-value-amber" id="mfPending">0</div>
-                    </div>
-                    <div class="mf-card mf-card-green">
-                        <div class="mf-card-label">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-                            Solved
-                        </div>
-                        <div class="mf-card-value mf-card-value-green" id="mfSolved">0</div>
-                    </div>
-                    <div class="mf-card mf-card-pink">
-                        <div class="mf-card-label">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ec4899" stroke-width="2"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>
-                            Solve Ratio
-                        </div>
-                        <div class="mf-card-value mf-card-value-pink" id="mfSolveRatio">0%</div>
-                    </div>
-                </div>
-
-                <!-- KAM Cards -->
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-6">
-                    <div class="mf-kam-card mf-kam-purple">
-                        <div class="flex items-center gap-3 mb-5">
-                            <div class="mf-kam-avatar mf-kam-avatar-purple">AA</div>
-                            <div class="mf-kam-name">Ahmed Asif Rashid</div>
-                        </div>
-                        <div class="flex gap-3 mb-4">
-                            <div class="mf-kam-stat-box">
-                                <div class="mf-kam-stat-value mf-card-value-purple" id="mfAhmedRaised">0</div>
-                                <div class="mf-kam-stat-label">Raised</div>
-                            </div>
-                            <div class="mf-kam-stat-box">
-                                <div class="mf-kam-stat-value mf-card-value-amber" id="mfAhmedPending">0</div>
-                                <div class="mf-kam-stat-label">Pending</div>
-                            </div>
-                            <div class="mf-kam-stat-box">
-                                <div class="mf-kam-stat-value mf-card-value-green" id="mfAhmedSolved">0</div>
-                                <div class="mf-kam-stat-label">Solved</div>
-                            </div>
-                        </div>
-                        <div class="mf-kam-ratio">solve ratio: <span id="mfAhmedRatio">0%</span></div>
-                        <div class="mf-kam-progress">
-                            <div class="mf-kam-progress-fill mf-kam-progress-purple" id="mfAhmedProgress" style="width: 0%"></div>
+                    <div class="card-gradient p-5 rounded-xl border relative overflow-hidden group theme-transition" style="border-color: var(--border-color); box-shadow: var(--shadow-sm);">
+                        <div class="absolute top-0 right-0 w-24 h-24 rounded-full -mr-8 -mt-8 transition-transform group-hover:scale-110" style="background: rgba(255,204,0,0.1);"></div>
+                        <p class="text-xs font-semibold uppercase tracking-wider theme-transition" style="color: var(--text-muted);">Open</p>
+                        <h3 class="text-3xl font-bold text-gold mt-1" id="stat-open">0</h3>
+                        <p class="text-xs mt-1 theme-transition" style="color: var(--text-muted);">Awaiting action</p>
+                        <div class="absolute bottom-0 left-0 w-full h-1" style="background: var(--border-color);">
+                            <div class="h-full bg-gold w-0 transition-all duration-1000" id="bar-open"></div>
                         </div>
                     </div>
-                    <div class="mf-kam-card mf-kam-green">
-                        <div class="flex items-center gap-3 mb-5">
-                            <div class="mf-kam-avatar mf-kam-avatar-green">NN</div>
-                            <div class="mf-kam-name">Nuruzzaman Nahid</div>
+                    <div class="card-gradient p-5 rounded-xl border relative overflow-hidden group theme-transition" style="border-color: var(--border-color); box-shadow: var(--shadow-sm);">
+                        <div class="absolute top-0 right-0 w-24 h-24 rounded-full -mr-8 -mt-8 transition-transform group-hover:scale-110" style="background: rgba(59,130,246,0.1);"></div>
+                        <p class="text-xs font-semibold uppercase tracking-wider theme-transition" style="color: var(--text-muted);">In Progress</p>
+                        <h3 class="text-3xl font-bold mt-1" style="color: #3b82f6;" id="stat-progress">0</h3>
+                        <p class="text-xs mt-1 theme-transition" style="color: var(--text-muted);">Being handled</p>
+                        <div class="absolute bottom-0 left-0 w-full h-1" style="background: var(--border-color);">
+                            <div class="h-full w-0 transition-all duration-1000" style="background: #3b82f6;" id="bar-progress"></div>
                         </div>
-                        <div class="flex gap-3 mb-4">
-                            <div class="mf-kam-stat-box">
-                                <div class="mf-kam-stat-value mf-card-value-purple" id="mfNahidRaised">0</div>
-                                <div class="mf-kam-stat-label">Raised</div>
-                            </div>
-                            <div class="mf-kam-stat-box">
-                                <div class="mf-kam-stat-value mf-card-value-amber" id="mfNahidPending">0</div>
-                                <div class="mf-kam-stat-label">Pending</div>
-                            </div>
-                            <div class="mf-kam-stat-box">
-                                <div class="mf-kam-stat-value mf-card-value-green" id="mfNahidSolved">0</div>
-                                <div class="mf-kam-stat-label">Solved</div>
-                            </div>
-                        </div>
-                        <div class="mf-kam-ratio">solve ratio: <span id="mfNahidRatio">0%</span></div>
-                        <div class="mf-kam-progress">
-                            <div class="mf-kam-progress-fill mf-kam-progress-green" id="mfNahidProgress" style="width: 0%"></div>
+                    </div>
+                    <div class="card-gradient p-5 rounded-xl border relative overflow-hidden group theme-transition" style="border-color: var(--border-color); box-shadow: var(--shadow-sm);">
+                        <div class="absolute top-0 right-0 w-24 h-24 rounded-full -mr-8 -mt-8 transition-transform group-hover:scale-110" style="background: rgba(34,197,94,0.1);"></div>
+                        <p class="text-xs font-semibold uppercase tracking-wider theme-transition" style="color: var(--text-muted);">Resolved</p>
+                        <h3 class="text-3xl font-bold mt-1" style="color: #22c55e;" id="stat-resolved">0</h3>
+                        <p class="text-xs mt-1 theme-transition" style="color: var(--text-muted);">Closed issues</p>
+                        <div class="absolute bottom-0 left-0 w-full h-1" style="background: var(--border-color);">
+                            <div class="h-full w-0 transition-all duration-1000" style="background: #22c55e;" id="bar-resolved"></div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Mail Log -->
-                <div>
-                    <div class="mf-log-title">Mail Log</div>
-                    <div class="flex flex-col lg:flex-row gap-3 mb-4">
-                        <div class="flex-1">
-                            <input type="text" id="mfSearchInput" placeholder="Search mail subject..." class="mf-search" oninput="applyMFFilters()">
-                        </div>
-                        <div class="flex gap-2">
-                            <select id="mfStatusFilter" class="mf-select" onchange="applyMFFilters()">
-                                <option value="all">All mails</option>
-                                <option value="solved">Solved</option>
-                                <option value="pending">Pending</option>
-                                <option value="urgent">Urgent</option>
-                            </select>
-                            <select id="mfKAMFilter" class="mf-select" onchange="applyMFFilters()">
-                                <option value="all">All members</option>
-                                <option value="AHMED ASIF RASHID">Ahmed Asif Rashid</option>
-                                <option value="NURUZZAMAN NAHID">Nuruzzaman Nahid</option>
-                            </select>
-                        </div>
+                <!-- Filters -->
+                <div class="flex flex-col sm:flex-row gap-3">
+                    <div class="relative flex-1">
+                        <i class="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 theme-transition" style="color: var(--text-muted);"></i>
+                        <input type="text" id="searchInput" onkeyup="renderTable()" placeholder="Search by Ticket ID, Merchant, Consignment, or Details..."
+                            class="w-full rounded-lg pl-10 pr-4 py-2.5 text-sm placeholder-slate-400 focus:outline-none focus:border-gold/50 focus:ring-1 focus:ring-gold/50 transition-all theme-transition"
+                            style="background-color: var(--bg-input); color: var(--text-primary); border: 1px solid var(--border-input);">
                     </div>
-                    <div class="overflow-x-auto">
-                        <table class="mf-table" id="mfTable">
-                            <thead>
-                                <tr>
-                                    <th style="width:40px">#</th>
-                                    <th>Date</th>
-                                    <th>KAM</th>
-                                    <th>Mail Subject</th>
-                                    <th>Status</th>
-                                    <th>Solved Date</th>
-                                    <th>Resolution Gap</th>
-                                </tr>
-                            </thead>
-                            <tbody id="mfTableBody">
-                                <tr><td colspan="100" class="mf-empty">
-                                    <div class="mf-empty-icon">📭</div>
-                                    <div>No mail feedback found.</div>
-                                </td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                    <div class="flex items-center justify-between mt-4 pt-4 border-t border-slate-100">
-                        <span class="text-xs text-slate-400" id="mfShowingText">Showing 0 of 0 mails</span>
-                        <div class="flex gap-2" id="mfPagination"></div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- ISSUES LOG SECTION -->
-            <div class="card p-6">
-                <div class="section-title mb-5">Issues Log</div>
-
-                <!-- Filters Row -->
-                <div class="flex flex-col lg:flex-row gap-3 mb-4">
-                    <div class="flex-1">
-                        <input type="text" id="searchInput" placeholder="Search consignment, details, category..." class="search-input" oninput="applyFilters()">
-                    </div>
-                    <div class="flex gap-2 flex-wrap">
-                        <select id="dateFilter" class="dropdown-select" onchange="applyFilters()">
-                            <option value="all">All dates</option>
-                            <option value="today">Today</option>
-                            <option value="week">This week</option>
-                            <option value="month">This month</option>
-                        </select>
-                        <select id="categoryFilter" class="dropdown-select" onchange="applyFilters()">
-                            <option value="all">All categories</option>
-                        </select>
-                        <select id="kamFilter" class="dropdown-select" onchange="applyFilters()">
-                            <option value="all">All KAMs</option>
-                            <option value="AHMED ASIF RASHID">Ahmed Asif Rashid</option>
-                            <option value="NURUZZAMAN NAHID">Nuruzzaman Nahid</option>
-                        </select>
-                        <select id="sheetFilter" class="dropdown-select" onchange="applyFilters()">
-                            <option value="all">All Tabs</option>
-                            <option value="Sheet 1">ISD</option>
-                            <option value="Sheet 2">OSD</option>
-                            <option value="Sheet 3">Central</option>
-                        </select>
-                    </div>
-                </div>
-
-                <!-- Filter Pills -->
-                <div class="flex gap-2 mb-4 flex-wrap">
-                    <button class="filter-pill active" id="pill-all" onclick="setPillFilter('all')">All</button>
-                    <button class="filter-pill" id="pill-ahmed" onclick="setPillFilter('ahmed')">Ahmed Asif Rashid</button>
-                    <button class="filter-pill" id="pill-nahid" onclick="setPillFilter('nahid')">Nuruzzaman Nahid</button>
-                    <button class="filter-pill" id="pill-ir" onclick="setPillFilter('ir')">IR mails only</button>
+                    <select id="statusFilter" onchange="renderTable()" class="rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-gold/50 cursor-pointer theme-transition"
+                        style="background-color: var(--bg-input); color: var(--text-primary); border: 1px solid var(--border-input);">
+                        <option value="All">All Statuses</option>
+                        <option value="Open">Open</option>
+                        <option value="In Progress">In Progress</option>
+                        <option value="Resolved">Resolved</option>
+                    </select>
+                    <select id="tagFilter" onchange="renderTable()" class="rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-gold/50 cursor-pointer theme-transition"
+                        style="background-color: var(--bg-input); color: var(--text-primary); border: 1px solid var(--border-input);">
+                        <option value="All">All Issue Tags</option>
+                    </select>
                 </div>
 
                 <!-- Table -->
-                <div class="overflow-x-auto">
-                    <table class="issues-table" id="issuesTable">
-                        <thead>
-                            <tr id="tableHeader">
-                                <th>Loading...</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tableBody">
-                            <tr><td colspan="100" class="empty-state">Loading data...</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-                <div id="tableFooter" class="flex items-center justify-between mt-4 pt-4 border-t border-slate-100">
-                    <span class="text-xs text-slate-400" id="showingText">Showing 0 of 0 issues</span>
-                    <div class="flex gap-2" id="pagination"></div>
-                </div>
-            </div>
-        </main>
-    </div>
-
-    
-    <!-- Admin Panel Modal -->
-    <div id="adminModal" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl p-6 max-w-lg w-full shadow-2xl" style="max-height: 80vh; overflow-y: auto;">
-            <h3 class="text-lg font-bold text-slate-800 mb-1">User Management</h3>
-            <p class="text-sm text-slate-500 mb-5">Add or remove authorized users. Only admins can access this panel.</p>
-
-            <div class="bg-slate-50 rounded-xl p-4 mb-5">
-                <h4 class="text-xs font-bold text-slate-600 uppercase tracking-wider mb-3">Add New User</h4>
-                <div class="space-y-3">
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-600 mb-1">Username</label>
-                        <input type="text" id="newUserName" class="auth-input" placeholder="e.g. john" autocomplete="off">
+                <div class="glass-panel rounded-xl overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="border-b text-xs uppercase font-semibold tracking-wider theme-transition" style="border-color: var(--border-color); color: var(--text-muted);">
+                                    <th class="p-4 w-32">Ticket ID</th>
+                                    <th class="p-4 w-36">Submitted</th>
+                                    <th class="p-4 w-40">Merchant</th>
+                                    <th class="p-4 w-36">Consignment</th>
+                                    <th class="p-4 w-36">Tag</th>
+                                    <th class="p-4">Details</th>
+                                    <th class="p-4 w-28">Status</th>
+                                    <th class="p-4 w-20 text-right">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="issuesTableBody" class="text-sm divide-y theme-transition" style="color: var(--text-secondary); border-color: var(--border-color);">
+                                <!-- Rows injected by JS -->
+                            </tbody>
+                        </table>
                     </div>
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-600 mb-1">Password</label>
-                        <input type="text" id="newUserPass" class="auth-input" placeholder="Enter password" autocomplete="off">
+                    <div id="emptyState" class="hidden p-12 text-center">
+                        <div class="inline-flex items-center justify-center w-16 h-16 rounded-full mb-4 theme-transition" style="background: var(--border-color);">
+                            <i class="fa-solid fa-inbox text-2xl theme-transition" style="color: var(--text-muted);"></i>
+                        </div>
+                        <h3 class="text-lg font-medium theme-transition" style="color: var(--text-primary);">No issues found</h3>
+                        <p class="text-sm mt-1 theme-transition" style="color: var(--text-muted);">Try adjusting your search or filters</p>
                     </div>
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-600 mb-1">Role</label>
-                        <select id="newUserRole" class="dropdown-select w-full">
-                            <option value="user">User</option>
-                            <option value="admin">Admin</option>
-                        </select>
-                    </div>
-                    <button onclick="addNewUser()" class="auth-btn">Add User</button>
-                    <div id="adminError" class="auth-error" style="display:none"></div>
                 </div>
             </div>
 
-            <div>
-                <h4 class="text-xs font-bold text-slate-600 uppercase tracking-wider mb-3">Active Users</h4>
-                <div id="usersList" class="space-y-2"></div>
+            <!-- VIEW: Analytics -->
+            <div id="view-analytics" class="hidden fade-in space-y-6">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- Issues by Tag -->
+                    <div class="glass-panel p-6 rounded-xl">
+                        <h3 class="text-lg font-bold mb-1 theme-transition" style="color: var(--text-primary);">Issues by Tag</h3>
+                        <p class="text-xs mb-6 theme-transition" style="color: var(--text-muted);">Breakdown of issue categories</p>
+                        <div class="chart-container">
+                            <canvas id="tagChart"></canvas>
+                        </div>
+                    </div>
+                    <!-- Status Distribution -->
+                    <div class="glass-panel p-6 rounded-xl">
+                        <h3 class="text-lg font-bold mb-1 theme-transition" style="color: var(--text-primary);">Status Distribution</h3>
+                        <p class="text-xs mb-6 theme-transition" style="color: var(--text-muted);">Current status of all issues</p>
+                        <div class="chart-container flex justify-center">
+                            <canvas id="statusChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="glass-panel p-6 rounded-xl">
+                    <h3 class="text-lg font-bold mb-1 theme-transition" style="color: var(--text-primary);">Issues Over Time</h3>
+                    <p class="text-xs mb-6 theme-transition" style="color: var(--text-muted);">Daily submission volume</p>
+                    <div class="chart-container" style="height: 300px;">
+                        <canvas id="timeChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- Top Merchants -->
+                    <div class="glass-panel p-6 rounded-xl">
+                        <h3 class="text-lg font-bold mb-1 theme-transition" style="color: var(--text-primary);">Top Merchants by Issues</h3>
+                        <p class="text-xs mb-4 theme-transition" style="color: var(--text-muted);">Most frequent issue raisers</p>
+                        <div id="topMerchantsList" class="space-y-3">
+                            <!-- Injected by JS -->
+                        </div>
+                    </div>
+                    <!-- Resolution Rate -->
+                    <div class="glass-panel p-6 rounded-xl flex flex-col items-center justify-center">
+                        <h3 class="text-lg font-bold mb-1 w-full text-left theme-transition" style="color: var(--text-primary);">Resolution Rate</h3>
+                        <p class="text-xs mb-4 w-full text-left theme-transition" style="color: var(--text-muted);">Resolved vs Unresolved</p>
+                        <div class="relative h-48 w-48">
+                            <canvas id="resolutionChart"></canvas>
+                            <div class="absolute inset-0 flex items-center justify-center flex-col pointer-events-none">
+                                <span class="text-2xl font-bold theme-transition" style="color: var(--text-primary);" id="resolutionPercent">0%</span>
+                                <span class="text-xs theme-transition" style="color: var(--text-muted);">Resolved</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
-            <div class="flex justify-end gap-3 mt-6 pt-4 border-t border-slate-100">
-                <button onclick="closeAdminPanel()" class="px-4 py-2 text-sm text-slate-500 hover:text-slate-800 font-medium transition-colors">Close</button>
+        </div>
+    </main>
+
+    <!-- Issue Details Modal -->
+    <div id="issueModal" class="fixed inset-0 z-50 hidden">
+        <div class="modal-overlay absolute inset-0" onclick="closeModal()"></div>
+        <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-2xl px-4">
+            <div class="rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto theme-transition" style="background-color: var(--bg-modal); border: 1px solid var(--border-color);">
+                <div class="p-6 border-b flex justify-between items-start sticky top-0 z-10 theme-transition" style="background-color: var(--bg-modal); border-color: var(--border-color);">
+                    <div>
+                        <p class="text-gold text-xs font-mono mb-1" id="modal-ticket-id">CB-0000-00000</p>
+                        <h3 class="text-xl font-bold theme-transition" style="color: var(--text-primary);">Issue Details</h3>
+                    </div>
+                    <button onclick="closeModal()" class="theme-transition" style="color: var(--text-muted);">
+                        <i class="fa-solid fa-xmark text-xl"></i>
+                    </button>
+                </div>
+                <div class="p-6 space-y-4">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <p class="text-xs uppercase font-semibold mb-1 theme-transition" style="color: var(--text-muted);">Merchant</p>
+                            <p class="text-sm font-medium theme-transition" style="color: var(--text-primary);" id="modal-merchant">-</p>
+                        </div>
+                        <div>
+                            <p class="text-xs uppercase font-semibold mb-1 theme-transition" style="color: var(--text-muted);">Consignment ID</p>
+                            <p class="text-sm font-medium theme-transition" style="color: var(--text-primary);" id="modal-consignment">-</p>
+                        </div>
+                        <div>
+                            <p class="text-xs uppercase font-semibold mb-1 theme-transition" style="color: var(--text-muted);">Issue Tag</p>
+                            <span id="modal-tag" class="tag-pill" style="background: var(--bg-input); color: var(--text-secondary); border: 1px solid var(--border-color);">-</span>
+                        </div>
+                        <div>
+                            <p class="text-xs uppercase font-semibold mb-1 theme-transition" style="color: var(--text-muted);">Submitted At</p>
+                            <p class="text-sm font-medium theme-transition" style="color: var(--text-primary);" id="modal-date">-</p>
+                        </div>
+                    </div>
+                    <div>
+                        <p class="text-xs uppercase font-semibold mb-1 theme-transition" style="color: var(--text-muted);">Issue Details</p>
+                        <div class="rounded-lg p-4 border min-h-[100px] theme-transition" style="background-color: var(--bg-modal-content); border-color: var(--border-color);">
+                            <p class="text-sm leading-relaxed whitespace-pre-wrap break-words font-bangla theme-transition" style="color: var(--text-secondary);" id="modal-details">-</p>
+                        </div>
+                    </div>
+
+                    <div class="pt-2">
+                        <p class="text-xs uppercase font-semibold mb-3 theme-transition" style="color: var(--text-muted);">Update Status</p>
+                        <div class="flex gap-2">
+                            <button onclick="updateStatus('Open')" id="btn-open" class="flex-1 py-2 rounded-lg text-sm font-medium border transition-all status-open">Open</button>
+                            <button onclick="updateStatus('In Progress')" id="btn-progress" class="flex-1 py-2 rounded-lg text-sm font-medium border transition-all status-progress">In Progress</button>
+                            <button onclick="updateStatus('Resolved')" id="btn-resolved" class="flex-1 py-2 rounded-lg text-sm font-medium border transition-all status-resolved">Resolved</button>
+                        </div>
+                        <p class="text-xs mt-3 text-center italic theme-transition" style="color: var(--text-muted);">
+                            <i class="fa-solid fa-circle-info mr-1"></i>
+                            Note: Status is derived from your Google Sheet checkboxes.
+                        </p>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- Settings Modal -->
-    <div id="settingsModal" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl p-6 max-w-lg w-full shadow-2xl">
-            <h3 class="text-lg font-bold text-slate-800 mb-1">Column Settings</h3>
-            <p class="text-sm text-slate-500 mb-5">Map your sheet columns to dashboard fields</p>
-            <div id="settingsContent" class="space-y-4 mb-6"></div>
-            <div class="flex justify-end gap-3">
-                <button onclick="closeSettings()" class="px-4 py-2 text-sm text-slate-500 hover:text-slate-800 font-medium transition-colors">Cancel</button>
-                <button onclick="saveSettings()" class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors">Save & Reload</button>
+    <!-- Raise Issue Modal -->
+    <div id="raiseIssueModal" class="fixed inset-0 z-50 hidden">
+        <div class="modal-overlay absolute inset-0" onclick="closeRaiseIssue()"></div>
+        <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-lg px-4">
+            <div class="rounded-2xl shadow-2xl overflow-hidden theme-transition" style="background-color: var(--bg-modal); border: 1px solid var(--border-color);">
+                <div class="p-6 border-b flex justify-between items-center theme-transition" style="border-color: var(--border-color);">
+                    <h3 class="text-xl font-bold theme-transition" style="color: var(--text-primary);">Raise New Issue</h3>
+                    <button onclick="closeRaiseIssue()" class="theme-transition" style="color: var(--text-muted);">
+                        <i class="fa-solid fa-xmark text-xl"></i>
+                    </button>
+                </div>
+                <div class="p-6 space-y-4">
+                    <div>
+                        <label class="block text-xs uppercase font-semibold mb-1 theme-transition" style="color: var(--text-muted);">Merchant Name</label>
+                        <input type="text" id="new-merchant" class="w-full rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-gold/50 theme-transition"
+                            style="background-color: var(--bg-modal-content); color: var(--text-primary); border: 1px solid var(--border-input);" placeholder="Enter merchant name">
+                    </div>
+                    <div>
+                        <label class="block text-xs uppercase font-semibold mb-1 theme-transition" style="color: var(--text-muted);">Consignment ID</label>
+                        <input type="text" id="new-consignment" class="w-full rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-gold/50 theme-transition"
+                            style="background-color: var(--bg-modal-content); color: var(--text-primary); border: 1px solid var(--border-input);" placeholder="Enter consignment ID">
+                    </div>
+                    <div>
+                        <label class="block text-xs uppercase font-semibold mb-1 theme-transition" style="color: var(--text-muted);">Issue Tag</label>
+                        <select id="new-tag" class="w-full rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-gold/50 theme-transition"
+                            style="background-color: var(--bg-modal-content); color: var(--text-primary); border: 1px solid var(--border-input);">
+                            <option value="Delivery delay">Delivery delay</option>
+                            <option value="pickup missed">pickup missed</option>
+                            <option value="Urgent delivery">Urgent delivery</option>
+                            <option value="Fake hold">Fake hold</option>
+                            <option value="Fake return">Fake return</option>
+                            <option value="COD update request">COD update request</option>
+                            <option value="Address Change">Address Change</option>
+                            <option value="Phone Number Change">Phone Number Change</option>
+                            <option value="Wrong COD/Delivery charge Collection">Wrong COD/Delivery charge Collection</option>
+                            <option value="Rider Misbehave">Rider Misbehave</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs uppercase font-semibold mb-1 theme-transition" style="color: var(--text-muted);">Issue Details</label>
+                        <textarea id="new-details" rows="4" class="w-full rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-gold/50 resize-none theme-transition"
+                            style="background-color: var(--bg-modal-content); color: var(--text-primary); border: 1px solid var(--border-input);" placeholder="Describe the issue in detail..."></textarea>
+                    </div>
+                    <button onclick="submitNewIssue()" class="w-full py-2.5 rounded-lg bg-gold hover:opacity-90 text-sm font-bold transition-colors" style="color: var(--cb-black);">
+                        Submit Issue
+                    </button>
+                </div>
             </div>
         </div>
     </div>
 
     <script>
-        // ===================== AUTH CONFIG =====================
-        const AUTH_USERS = [
-            { username: 'admin', password: 'carrybee2024', role: 'admin' },
-            { username: 'nahid', password: 'nahid84175', role: 'admin' },
-            { username: 'ahmed', password: 'ahmed86026', role: 'user' },
-            { username: 'muktadir', password: 'muktadir86003', role: 'user' }
-        ];
-        const AUTH_SESSION_KEY = 'carrybee_auth';
-        const AUTH_REMEMBER_KEY = 'carrybee_auth_remember';
-        const AUTH_DYNAMIC_USERS_KEY = 'carrybee_dynamic_users';
+        // --- Theme Toggle ---
+        let currentTheme = localStorage.getItem('carrybee-theme') || 'light';
+        document.documentElement.setAttribute('data-theme', currentTheme);
+        updateThemeIcon();
 
-        function getAllUsers() {
-            const dynamic = JSON.parse(localStorage.getItem(AUTH_DYNAMIC_USERS_KEY) || '[]');
-            return [...AUTH_USERS, ...dynamic];
+        function toggleTheme() {
+            currentTheme = currentTheme === 'light' ? 'dark' : 'light';
+            document.documentElement.setAttribute('data-theme', currentTheme);
+            localStorage.setItem('carrybee-theme', currentTheme);
+            updateThemeIcon();
+            // Re-render charts to update colors
+            setTimeout(() => {
+                Object.values(charts).forEach(c => { if(c) { c.destroy(); } });
+                charts = {};
+                updateAnalytics();
+            }, 300);
         }
 
-        function getCurrentUser() {
-            const session = sessionStorage.getItem(AUTH_SESSION_KEY);
-            const remember = localStorage.getItem(AUTH_REMEMBER_KEY);
-            if (!session && !remember) return null;
-            try {
-                return JSON.parse(session || remember);
-            } catch (e) {
-                return null;
+        function updateThemeIcon() {
+            const icon = document.getElementById('theme-icon');
+            if (currentTheme === 'dark') {
+                icon.className = 'fa-solid fa-sun';
+            } else {
+                icon.className = 'fa-solid fa-moon';
             }
         }
 
-        function isAdmin() {
-            const user = getCurrentUser();
-            return user && user.role === 'admin';
-        }
+        // --- Configuration ---
+        const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSybJkSsKQxyczJc4Llsa10ywnR7YL3JNWN3Yx7RCc3GGWBOt4O43sSOMy2cNgYVQRtoAakguvAqgsy/pub?output=csv';
 
-        function checkAuth() {
-            const session = sessionStorage.getItem(AUTH_SESSION_KEY);
-            const remember = localStorage.getItem(AUTH_REMEMBER_KEY);
-            if (session || remember) {
-                showApp();
-                return true;
-            }
-            return false;
-        }
-
-        function doLogin() {
-            const user = document.getElementById('authUser').value.trim();
-            const pass = document.getElementById('authPass').value.trim();
-            const remember = document.getElementById('authRemember').checked;
-            const errorEl = document.getElementById('authError');
-
-            const allUsers = getAllUsers();
-            const matched = allUsers.find(u => u.username === user && u.password === pass);
-            if (!matched) {
-                errorEl.style.display = 'block';
-                document.getElementById('authPass').value = '';
-                document.getElementById('authPass').focus();
-                return;
-            }
-
-            errorEl.style.display = 'none';
-            const userData = JSON.stringify({ username: matched.username, role: matched.role });
-            sessionStorage.setItem(AUTH_SESSION_KEY, userData);
-            if (remember) {
-                localStorage.setItem(AUTH_REMEMBER_KEY, userData);
-            }
-            showApp();
-        }
-
-        function doLogout() {
-            sessionStorage.removeItem(AUTH_SESSION_KEY);
-            localStorage.removeItem(AUTH_REMEMBER_KEY);
-            location.reload();
-        }
-
-        function showApp() {
-            document.getElementById('authOverlay').style.display = 'none';
-            document.getElementById('appContent').style.display = 'block';
-
-            // Show admin button for admins
-            const adminBtn = document.getElementById('adminBtn');
-            if (adminBtn) {
-                adminBtn.classList.toggle('hidden', !isAdmin());
-            }
-
-            loadAllSheets();
-        }
-
-        // ===================== CONFIG =====================
-        const SHEETS = [
-            { name: 'Sheet 1', displayName: 'ISD', url: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRvcHh_-szyOevlR4V86qiagypaMcBaF-ikwfeMJ-vamXKQBH7jWaIrmajn9VdgE5xm78RN_L30O5_s/pub?output=csv' },
-            { name: 'Sheet 2', displayName: 'OSD', url: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSAVNwzXLfSVFu4psJlhz7pqMKtEocVNUKChUbpRaFoXVxSric-zuGESs7GyT0R6DO_sF76RE951c3B/pub?output=csv' },
-            { name: 'Sheet 3', displayName: 'Central', url: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRsO79-0XIgKVkMKaIPjkBCp-npePr9WxH8LCX3jcPslWC4PlP4Qsa0qalr6FQuBZGmPsiLnkt2uv2S/pub?gid=0&single=true&output=csv' }
-        ];
-
-        const KAM_MAP = {
-            // Email formats
-            'ahmed.asif@carrybee.com': 'AHMED ASIF RASHID',
-            'ahmed.asif': 'AHMED ASIF RASHID',
-            'asif.rashid@carrybee.com': 'AHMED ASIF RASHID',
-            'asif.rashid': 'AHMED ASIF RASHID',
-            'nuruzzaman.nahid@carrybee.com': 'NURUZZAMAN NAHID',
-            'nuruzzaman.nahid': 'NURUZZAMAN NAHID',
-            // Name variations – Ahmed
-            'ahmed asif rashid': 'AHMED ASIF RASHID',
-            'ahmed asif': 'AHMED ASIF RASHID',
-            'ahmed.asif.rashid': 'AHMED ASIF RASHID',
-            'asif rashid': 'AHMED ASIF RASHID',
-            'a. asif rashid': 'AHMED ASIF RASHID',
-            'ahmed': 'AHMED ASIF RASHID',
-            'asif': 'AHMED ASIF RASHID',
-            'ar': 'AHMED ASIF RASHID',
-            'aa': 'AHMED ASIF RASHID',
-            // Name variations – Nahid
-            'nuruzzaman nahid': 'NURUZZAMAN NAHID',
-            'nuruzzaman': 'NURUZZAMAN NAHID',
-            'nahid': 'NURUZZAMAN NAHID',
-            'n. nahid': 'NURUZZAMAN NAHID',
-            'nn': 'NURUZZAMAN NAHID',
+        const TAG_COLORS = {
+            'Delivery delay': 'bg-yellow-500/10 text-yellow-600 border-yellow-500/20',
+            'pickup missed': 'bg-orange-500/10 text-orange-600 border-orange-500/20',
+            'Urgent delivery': 'bg-red-500/10 text-red-600 border-red-500/20',
+            'Fake hold': 'bg-purple-500/10 text-purple-600 border-purple-500/20',
+            'Fake return': 'bg-pink-500/10 text-pink-600 border-pink-500/20',
+            'COD update request': 'bg-blue-500/10 text-blue-600 border-blue-500/20',
+            'Address Change': 'bg-indigo-500/10 text-indigo-600 border-indigo-500/20',
+            'Phone Number Change': 'bg-cyan-500/10 text-cyan-600 border-cyan-500/20',
+            'Wrong COD/Delivery charge Collection': 'bg-rose-500/10 text-rose-600 border-rose-500/20',
+            'Rider Misbehave': 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20'
         };
 
-        const TARGET_KAMS = ['AHMED ASIF RASHID', 'NURUZZAMAN NAHID'];
+        const TAG_CHART_COLORS = {
+            'Delivery delay': '#fbbf24',
+            'pickup missed': '#f97316',
+            'Urgent delivery': '#ef4444',
+            'Fake hold': '#a855f7',
+            'Fake return': '#ec4899',
+            'COD update request': '#3b82f6',
+            'Address Change': '#6366f1',
+            'Phone Number Change': '#06b6d4',
+            'Wrong COD/Delivery charge Collection': '#f43f5e',
+            'Rider Misbehave': '#10b981'
+        };
 
-        function normalizeKAM(val) {
-            if (!val) return 'Unknown';
-            const clean = String(val).toLowerCase().trim();
-            const base = clean.split('@')[0];
-            // Direct map lookup
-            if (KAM_MAP[clean]) return KAM_MAP[clean];
-            if (KAM_MAP[base]) return KAM_MAP[base];
-            // Fuzzy: contains key words
-            if (clean.includes('ahmed') || clean.includes('asif') || clean.includes('rashid')) return 'AHMED ASIF RASHID';
-            if (clean.includes('nuruzzaman') || clean.includes('nahid')) return 'NURUZZAMAN NAHID';
-            return String(val).toUpperCase().trim();
+        let issuesData = [];
+        let currentModalIssue = null;
+        let charts = {};
+
+        function generateTicketId(date, index) {
+            const d = new Date(date);
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `CB-${month}${day}-${String(index + 1).padStart(5, '0')}`;
         }
 
-        let COL_MAP = { kam: null, status: null, category: null, date: null, irMail: null, consignment: null, details: null, opsReply: null, opsReplyCols: [], concernHub: null };
-        let allData = [];
-        let teamData = [];
-        let mailData = [];   // ← dedicated array for mail sheet, never touches allData/teamData
-        let filteredData = [];
-        let categoryChart = null;
-        let dailyChart = null;
-        let mfCurrentPage = 1;
-        const MF_PAGE_SIZE = 5;
-        let mfFilteredData = [];
-        let currentPeriod = '7d';
-        let currentPill = 'all';
-        let currentPage = 1;
-        const PAGE_SIZE = 50;
-
-        // ===================== ROBUST DATE PARSER =====================
-        function parseDateRobust(val) {
-            if (!val) return null;
-            const str = String(val).trim();
-            if (!str) return null;
-
-            let d = new Date(str);
-            if (!isNaN(d.getTime())) return d;
-
-            // dd-MMM-yyyy  e.g. "18-May-2026"
-            const dMonY = str.match(/^(\d{1,2})-([A-Za-z]{3,9})-(\d{4})$/);
-            if (dMonY) {
-                d = new Date(dMonY[1] + ' ' + dMonY[2] + ' ' + dMonY[3]);
-                if (!isNaN(d.getTime())) return d;
-            }
-
-            const usMatch = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{2}):(\d{2}))?/);
-            if (usMatch) {
-                const [, mm, dd, yyyy, hh = 0, min = 0, ss = 0] = usMatch;
-                d = new Date(parseInt(yyyy), parseInt(mm) - 1, parseInt(dd), parseInt(hh), parseInt(min), parseInt(ss));
-                if (!isNaN(d.getTime())) return d;
-            }
-
-            const altMatch = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
-            if (altMatch) {
-                const [, first, second, yyyy] = altMatch;
-                const firstNum = parseInt(first);
-                const secondNum = parseInt(second);
-                if (firstNum > 12) {
-                    d = new Date(parseInt(yyyy), secondNum - 1, firstNum);
-                    if (!isNaN(d.getTime())) return d;
-                }
-            }
-
-            const euDashMatch = str.match(/^(\d{1,2})-(\d{1,2})-(\d{4})/);
-            if (euDashMatch) {
-                const [, dd, mm, yyyy] = euDashMatch;
-                d = new Date(parseInt(yyyy), parseInt(mm) - 1, parseInt(dd));
-                if (!isNaN(d.getTime())) return d;
-            }
-
-            const isoMatch = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
-            if (isoMatch) {
-                const [, yyyy, mm, dd] = isoMatch;
-                d = new Date(parseInt(yyyy), parseInt(mm) - 1, parseInt(dd));
-                if (!isNaN(d.getTime())) return d;
-            }
-
-            const serial = parseFloat(str);
-            if (!isNaN(serial) && serial > 30000 && serial < 60000) {
-                d = new Date((serial - 25569) * 86400 * 1000);
-                if (!isNaN(d.getTime())) return d;
-            }
-
-            return null;
+        function getStatus(issue) {
+            const solved = issue.solved === true || issue.solved === 'TRUE' || issue.solved === 'true' || issue.solved === 'Yes' || issue.solved === 'yes';
+            const inProcess = issue.inProcess === true || issue.inProcess === 'TRUE' || issue.inProcess === 'true' || issue.inProcess === 'Yes' || issue.inProcess === 'yes';
+            if (solved) return 'Resolved';
+            if (inProcess) return 'In Progress';
+            return 'Open';
         }
 
-        // ===================== DATA FETCHING =====================
-        async function fetchCSV(url) {
-            const response = await fetch(url, { cache: 'no-store' });
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            const text = await response.text();
-            return Papa.parse(text, { header: true, skipEmptyLines: true }).data;
+        function getTagColor(tag) {
+            return TAG_COLORS[tag] || 'bg-gray-200 text-gray-600 border-gray-300';
         }
 
-        function findKAMInRow(row) {
-            for (const key of Object.keys(row)) {
-                const val = String(row[key] || '').toLowerCase().trim();
-                if (!val) continue;
-                const base = val.split('@')[0];
-                if (KAM_MAP[val]) return { kam: KAM_MAP[val], column: key };
-                if (KAM_MAP[base]) return { kam: KAM_MAP[base], column: key };
-                if (val.includes('ahmed') || val.includes('asif') || val.includes('rashid'))
-                    return { kam: 'AHMED ASIF RASHID', column: key };
-                if (val.includes('nuruzzaman') || val.includes('nahid'))
-                    return { kam: 'NURUZZAMAN NAHID', column: key };
-            }
-            return null;
-        }
+        async function fetchData() {
+            const refreshIcon = document.getElementById('refresh-icon');
+            refreshIcon.classList.add('fa-spin');
+            document.getElementById('loading-state').classList.remove('hidden');
 
-        function detectColumns(headers, sampleRows) {
-            const h = headers.map(x => x.toLowerCase().trim());
-            const map = { kam: null, status: null, category: null, date: null, irMail: null, consignment: null, details: null, opsReply: null, opsReplyCols: [], concernHub: null };
-
-            for (let i = 0; i < h.length; i++) {
-                const col = h[i];
-                if (col.includes('email') || col.includes('kam') || col.includes('assignee') || col.includes('owner') || col.includes('agent') || col.includes('user')) {
-                    map.kam = headers[i]; break;
-                }
-            }
-            if (!map.kam) {
-                for (let i = 0; i < h.length; i++) {
-                    for (let row of sampleRows.slice(0, 5)) {
-                        if (String(row[headers[i]] || '').includes('@')) { map.kam = headers[i]; break; }
-                    }
-                    if (map.kam) break;
-                }
-            }
-
-            for (let i = 0; i < h.length; i++) {
-                const col = h[i];
-                if (col.includes('status') || col.includes('state') || col.includes('solve') || col.includes('resolved') || col.includes('closed')) {
-                    map.status = headers[i]; break;
-                }
-            }
-
-            const catKeywords = ['category', 'type', 'subject', 'topic', 'reason', 'nature', 'area', 'department', 'group', 'issue'];
-            const catAvoid = ['status', 'state', 'solve', 'resolved', 'closed', 'email', 'kam', 'assignee', 'date', 'time', 'timestamp', 'id', 'consignment', 'cn', 'tracking', 'note', 'comment', 'reply', 'ops'];
-
-            for (let i = 0; i < h.length; i++) {
-                if (headers[i] === map.status) continue;
-                const col = h[i];
-                const isMainCat = col.includes('category') && !col.includes('sub');
-                if (isMainCat) {
-                    map.category = headers[i]; break;
-                }
-            }
-            if (!map.category) {
-                for (let i = 0; i < h.length; i++) {
-                    if (headers[i] === map.status) continue;
-                    const col = h[i];
-                    const isCat = catKeywords.some(k => col.includes(k));
-                    const isAvoid = catAvoid.some(k => col.includes(k));
-                    if (isCat && !isAvoid) {
-                        map.category = headers[i]; break;
-                    }
-                }
-            }
-            if (!map.category) {
-                for (let i = 0; i < h.length; i++) {
-                    if (headers[i] === map.status) continue;
-                    const col = h[i];
-                    if (col.includes('issue') || col.includes('problem') || col.includes('complaint')) {
-                        const samples = sampleRows.slice(0, 5).map(r => String(r[headers[i]] || '').toLowerCase().trim());
-                        const statusLike = samples.filter(v => v === 'pending' || v === 'solved' || v === 'urgent' || v === 'closed' || v === 'resolved' || v === 'done' || v === 'open').length;
-                        if (statusLike < 3) {
-                            map.category = headers[i]; break;
-                        }
-                    }
-                }
-            }
-
-            for (let i = 0; i < h.length; i++) {
-                const col = h[i];
-                if (col.includes('date') || col.includes('created') || col.includes('time') || col.includes('timestamp')) {
-                    map.date = headers[i]; break;
-                }
-            }
-
-            for (let i = 0; i < h.length; i++) {
-                const col = h[i];
-                if (col.includes('ir') || col.includes('mail') || col.includes('email_sent') || col.includes('notification')) {
-                    map.irMail = headers[i]; break;
-                }
-            }
-
-            for (let i = 0; i < h.length; i++) {
-                const col = h[i];
-                if (col.includes('consignment') || col.includes('id') || col.includes('cn') || col.includes('tracking') || col.includes('number') || col.includes('code')) {
-                    map.consignment = headers[i]; break;
-                }
-            }
-
-            for (let i = 0; i < h.length; i++) {
-                const col = h[i];
-                if (col === 'issue details' || col.includes('issue detail') || col === 'details' || col.includes('details')) {
-                    map.details = headers[i]; break;
-                }
-            }
-            if (!map.details) {
-                for (let i = 0; i < h.length; i++) {
-                    const col = h[i];
-                    if (col.includes('desc') && !col.includes('comment')) {
-                        map.details = headers[i]; break;
-                    }
-                }
-            }
-
-            for (let i = 0; i < h.length; i++) {
-                const col = h[i];
-                if (col.includes('comment') || col.includes('reply') || col.includes('ops') || col.includes('pick') || col.includes('age') || col.includes('response') || col.includes('action') || col.includes('note')) {
-                    map.opsReplyCols.push(headers[i]);
-                }
-            }
-            map.opsReplyCols.sort((a, b) => {
-                const aLower = a.toLowerCase();
-                const bLower = b.toLowerCase();
-                if (aLower.includes('comment 1') || aLower.includes('comments 1')) return -1;
-                if (bLower.includes('comment 1') || bLower.includes('comments 1')) return 1;
-                if (aLower.includes('1') && !bLower.includes('1')) return -1;
-                if (bLower.includes('1') && !aLower.includes('1')) return 1;
-                return a.localeCompare(b);
-            });
-            map.comment1 = map.opsReplyCols[0] || null;
-            map.comment2 = map.opsReplyCols[1] || null;
-            map.opsReply = map.opsReplyCols[0] || null;
-
-            for (let i = 0; i < h.length; i++) {
-                const col = h[i];
-                if (col.includes('concern') || col.includes('hub') || col === 'concern hub (copy exactly from system)' || col === 'concern hub') {
-                    map.concernHub = headers[i]; break;
-                }
-            }
-
-            console.log('Detected columns:', { sheet: 'current', headers, detected: map });
-            return map;
-        }
-
-        function isSolved(status, comment1, comment2) {
-            const hasComment1 = comment1 && String(comment1).trim().length > 0 && String(comment1).trim() !== '-';
-            const hasComment2 = comment2 && String(comment2).trim().length > 0 && String(comment2).trim() !== '-';
-            const hasAnyComment = hasComment1 || hasComment2;
-
-            if (status) {
-                const s = String(status).toLowerCase();
-                if (s.includes('solved') || s.includes('resolved') || s.includes('closed') || s.includes('done') || s.includes('complete')) return true;
-            }
-            if (hasAnyComment) return true;
-            return false;
-        }
-
-        function isUrgent(status, row) {
-            if (!status) return false;
-            const s = String(status).toLowerCase();
-            if (s.includes('urgent') || s.includes('critical') || s.includes('high')) return true;
-            for (let key of Object.keys(row)) {
-                const val = String(row[key] || '').toLowerCase();
-                if (val.includes('urgent') && key.toLowerCase() !== (COL_MAP.status || '').toLowerCase()) return true;
-            }
-            return false;
-        }
-
-        function isIRMail(val) {
-            if (!val) return false;
-            const v = String(val).toLowerCase();
-            return v.includes('yes') || v.includes('true') || v.includes('1') || v.includes('sent') || v.includes('ir');
-        }
-
-        function getOpsReplyStatus(val, isSolvedFlag) {
-            if (!val) return { text: '-', class: 'ops-other' };
-            const text = String(val).trim();
-            if (isSolvedFlag) return { text: text, class: 'ops-solved' };
-            return { text: text, class: 'ops-other' };
-        }
-
-        function sortByDateDesc(data) {
-            return data.sort((a, b) => {
-                if (a._date && b._date) return b._date - a._date;
-                if (a._date && !b._date) return -1;
-                if (!a._date && b._date) return 1;
-                return 0;
-            });
-        }
-
-        // ===================== LOAD DATA =====================
-        // ── loadMailSheet: dedicated loader for the mail sheet, isolated from issues data ──
-        async function loadMailSheet() {
-            const MAIL_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRlViGGma2_xDruRqM8Y77VWWiO7OwvylvZP9UTD30uGPMOyn8C5Ceo1DzlBhHTsRT5kzKo3GqFo6Vg/pub?output=csv';
-            mailData = [];
             try {
-                const res = await fetch(MAIL_URL, { cache: 'no-store' });
-                if (!res.ok) throw new Error('HTTP ' + res.status);
-                const text = await res.text();
-                const rows = Papa.parse(text, { header: true, skipEmptyLines: true }).data;
-                rows.forEach(row => {
-                    const kamEmail = String(row['KAM Mail'] || '').trim().toLowerCase();
-                    if (!kamEmail) return;                                         // skip empty rows
-                    const kamName = KAM_MAP[kamEmail] || KAM_MAP[kamEmail.split('@')[0]] || null;
-                    if (!kamName || !TARGET_KAMS.includes(kamName)) return;        // skip unknown KAMs
-                    const slove = String(row['Slove'] || '').toLowerCase().trim();
-                    mailData.push({
-                        _kam:      kamName,
-                        _date:     parseDateRobust(row['Date'] || ''),
-                        _dateRaw:  row['Date'] || '',
-                        _solved:   slove === 'true' || slove === '1',
-                        _urgent:   false,
-                        _irMail:   true,
-                        _category: 'Mail',
-                        _raw:      row
-                    });
-                });
-                // Append mail count to debug bar without touching existing content
-                const bar = document.getElementById('debugBar');
-                if (bar) {
-                    bar.innerHTML += ` <span class="ok" style="color:#22d3ee">Mail Log: ${mailData.length} rows</span>`;
-                }
-            } catch(e) {
-                console.error('Mail sheet load failed:', e.message);
-                const bar = document.getElementById('debugBar');
-                if (bar) bar.innerHTML += ` <span class="err">Mail Log: ERROR (${e.message})</span>`;
-            }
-        }
-        async function loadAllSheets() {
-            const btn = document.getElementById('refreshBtn');
-            btn.disabled = true;
-            btn.innerHTML = `<svg class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Loading...`;
-
-            allData = [];
-            let errors = [];
-            let debugInfo = [];
-
-            for (let i = 0; i < SHEETS.length; i++) {
-                try {
-                    const rows = await fetchCSV(SHEETS[i].url);
-                    const rowCount = rows.length;
-
-                    if (rows.length === 0) {
-                        debugInfo.push({ name: SHEETS[i].displayName, count: 0, status: 'empty' });
-                        continue;
-                    }
-
-                    const headers = Object.keys(rows[0]);
-                    const detected = detectColumns(headers, rows);
-
-                    const sheetColMap = {
-                        kam: detected.kam || COL_MAP.kam,
-                        status: detected.status || COL_MAP.status,
-                        category: detected.category,
-                        date: detected.date || COL_MAP.date,
-                        irMail: detected.irMail || COL_MAP.irMail,
-                        consignment: detected.consignment || COL_MAP.consignment,
-                        details: detected.details || COL_MAP.details,
-                        opsReplyCols: detected.opsReplyCols || [],
-                        opsReply: detected.opsReply,
-                        comment1: detected.comment1,
-                        comment2: detected.comment2,
-                        concernHub: detected.concernHub || COL_MAP.concernHub
-                    };
-
-                    const kamCol = sheetColMap.kam || headers[0];
-                    let sheetTeamCount = 0;
-
-                    rows.forEach(row => {
-                        let kamVal = row[kamCol];
-                        let kamName = normalizeKAM(kamVal);
-                        let foundCol = kamCol;
-
-                        if (kamName === 'UNKNOWN' || !TARGET_KAMS.includes(kamName)) {
-                            const found = findKAMInRow(row);
-                            if (found) {
-                                kamName = found.kam;
-                                foundCol = found.column;
-                            }
-                        }
-
-                        const statusVal = row[sheetColMap.status || ''];
-                        const categoryVal = row[sheetColMap.category || ''];
-                        const dateVal = row[sheetColMap.date || ''];
-                        const irVal = sheetColMap.irMail ? row[sheetColMap.irMail] : '';
-                        const comment1Val = sheetColMap.comment1 ? (row[sheetColMap.comment1] || '') : '';
-                        const comment2Val = sheetColMap.comment2 ? (row[sheetColMap.comment2] || '') : '';
-                        const opsVal = String(comment1Val).trim() || String(comment2Val).trim();
-                        const concernHubVal = sheetColMap.concernHub ? (row[sheetColMap.concernHub] || '') : '';
-
-                        if (detected.opsReplyCols && detected.opsReplyCols.length) {
-                            const existing = new Set(COL_MAP.opsReplyCols || []);
-                            detected.opsReplyCols.forEach(c => existing.add(c));
-                            COL_MAP.opsReplyCols = Array.from(existing);
-                        }
-
-                        allData.push({
-                            _kam: kamName,
-                            _kamOriginal: kamVal,
-                            _kamFoundCol: foundCol,
-                            _status: statusVal,
-                            _solved: isSolved(statusVal, comment1Val, comment2Val),
-                            _urgent: isUrgent(statusVal, row),
-                            _category: categoryVal ? String(categoryVal).trim() : 'Uncategorized',
-                            _date: parseDateRobust(dateVal),
-                            _dateRaw: dateVal,
-                            _irMail: isIRMail(irVal),
-                            _opsReply: opsVal ? String(opsVal).trim() : '',
-                            _comment1: comment1Val ? String(comment1Val).trim() : '',
-                            _comment2: comment2Val ? String(comment2Val).trim() : '',
-                            _sheet: SHEETS[i].name,
-                            _sheetDisplay: SHEETS[i].displayName,
-                            _concernHub: concernHubVal ? String(concernHubVal).trim() : '',
-                            _raw: row
-                        });
-
-                        if (TARGET_KAMS.includes(kamName)) sheetTeamCount++;
-                    });
-
-                    // Collect raw KAM values for diagnosis
-                    const rawKamValues = [...new Set(rows.map(r => String(r[kamCol] || '').trim()).filter(Boolean))].slice(0, 10);
-                    const unmatchedKams = [...new Set(
-                        rows.map(r => {
-                            const raw = String(r[kamCol] || '').trim();
-                            const norm = normalizeKAM(raw);
-                            return TARGET_KAMS.includes(norm) ? null : raw;
-                        }).filter(Boolean)
-                    )].slice(0, 5);
-                    debugInfo.push({ name: SHEETS[i].displayName, count: rowCount, teamCount: sheetTeamCount, status: 'ok', cols: { cat: sheetColMap.category, stat: sheetColMap.status }, kamCol, rawKamValues, unmatchedKams });
-                } catch (e) {
-                    errors.push(`${SHEETS[i].displayName}: ${e.message}`);
-                    debugInfo.push({ name: SHEETS[i].displayName, count: 0, status: 'error', error: e.message });
-                    console.error(`Failed to load ${SHEETS[i].displayName}:`, e);
-                }
+                const response = await fetch(SHEET_URL);
+                if (!response.ok) throw new Error('Network response was not ok');
+                const csvText = await response.text();
+                issuesData = parseCSV(csvText);
+                issuesData.sort((a, b) => new Date(b.date + ' ' + b.timestamp) - new Date(a.date + ' ' + a.timestamp));
+                issuesData.forEach((issue, i) => { issue.ticketId = generateTicketId(issue.date, i); });
+                showToast('Data loaded successfully!', 'success');
+            } catch (e) {
+                console.error('Fetch error:', e);
+                showToast('Failed to load from Google Sheet. Using demo data.', 'error');
+                issuesData = [
+                    { date: '2026-06-29', timestamp: '9:21:40', consignmentId: 'F06289AV8CW', merchant: 'Paperfly', issueTag: 'Delivery delay', details: 'test test test testtest test test testtest test test testtest test test test', inProcess: false, solved: false },
+                    { date: '2026-06-29', timestamp: '12:41:08', consignmentId: 'F0627SXWXUE', merchant: 'Sumaiya Hair Tonic', issueTag: 'pickup missed', details: 'Ei parcel ajker modhe delivery lagbe', inProcess: true, solved: false },
+                    { date: '2026-06-29', timestamp: '16:55:30', consignmentId: 'F0629UZF89D', merchant: 'Glowfe', issueTag: 'Lost Shipment', details: 'this parcel is lost and we need to find it immediately. Customer is waiting for update since yesterday morning.', inProcess: false, solved: true },
+                    { date: '2026-06-28', timestamp: '10:15:00', consignmentId: 'CB-2024-00123', merchant: 'Dhaka Fashion House', issueTag: 'Urgent delivery', details: 'Order was supposed to arrive on 24th June but still has not been delivered. Customer is very upset and calling every hour.', inProcess: false, solved: false },
+                    { date: '2026-06-28', timestamp: '11:30:22', consignmentId: 'CB-2024-00155', merchant: 'Organic Roots', issueTag: 'COD update request', details: 'COD amount was collected by rider but not remitted to merchant account. Amount is 2,450 BDT.', inProcess: true, solved: false },
+                    { date: '2026-06-27', timestamp: '14:55:00', consignmentId: 'CB-2024-00199', merchant: 'StyleHub', issueTag: 'Fake return', details: 'Return parcel was picked up on 22nd June but status still not updated in system. Merchant waiting for confirmation.', inProcess: false, solved: true },
+                    { date: '2026-06-27', timestamp: '09:12:43', consignmentId: 'CB-2024-00180', merchant: 'TechZone BD', issueTag: 'Rider Misbehave', details: 'Package received but the product inside is damaged. Screen is cracked. Customer wants replacement.', inProcess: true, solved: false },
+                    { date: '2026-06-26', timestamp: '16:20:00', consignmentId: 'CB-2024-00210', merchant: 'Gadget World', issueTag: 'Address Change', details: 'Delivered to wrong address. Customer address was House 15, Road 7 but delivered to House 51, Road 7.', inProcess: false, solved: false },
+                    { date: '2026-06-25', timestamp: '11:00:00', consignmentId: 'CB-2024-00215', merchant: 'Maa Kitchen', issueTag: 'Phone Number Change', details: 'Rider did not show up for scheduled pick up at 2 PM. Merchant waited for 1 hour. Need reschedule.', inProcess: false, solved: false },
+                    { date: '2026-06-25', timestamp: '13:45:00', consignmentId: 'CB-2024-00220', merchant: 'Dhaka Fashion House', issueTag: 'Wrong COD/Delivery charge Collection', details: 'Box was torn and item is missing. Customer received empty package. Very urgent complaint.', inProcess: false, solved: true }
+                ];
             }
 
-            allData = sortByDateDesc(allData);
-            teamData = allData.filter(d => TARGET_KAMS.includes(d._kam));
-
-            const debugBar = document.getElementById('debugBar');
-            const debugHTML = debugInfo.map(d => {
-                if (d.status === 'error') return `<span class="err">${d.name}: ERROR (${d.error})</span>`;
-                if (d.status === 'empty') return `<span>${d.name}: 0 rows</span>`;
-                const unmatchedStr = d.unmatchedKams && d.unmatchedKams.length
-                    ? ` <span style="color:#f59e0b">⚠ unmatched KAMs: ${d.unmatchedKams.map(v => '"'+v+'"').join(', ')}</span>`
-                    : '';
-                const kamColStr = d.kamCol ? ` [KAM col: "${d.kamCol}"]` : '';
-                return `<span class="ok">${d.name}: ${d.count} rows (${d.teamCount} team)${kamColStr}</span>${unmatchedStr}`;
-            }).join(' | ');
-            debugBar.innerHTML = debugHTML + ` | <span style="color:#94a3b8">Total team: ${teamData.length}</span>`;
-            debugBar.classList.remove('hidden');
-
-            const cats = [...new Set(teamData.map(d => d._category).filter(c => c && c !== 'Uncategorized'))].sort();
-            const catSelect = document.getElementById('categoryFilter');
-            catSelect.innerHTML = '<option value="all">All categories</option>' + cats.map(c => `<option value="${c}">${c}</option>`).join('');
-
-            const errorText = errors.length > 0 ? ` | Errors: ${errors.join(', ')}` : '';
-            document.getElementById('lastUpdate').textContent = `Loaded • ${new Date().toLocaleTimeString()}${errorText}`;
-
-            btn.disabled = false;
-            btn.innerHTML = `<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg> Refresh`;
-
-            renderDashboard();
-            applyFilters();
-            await loadMailSheet();   // load mail sheet separately — does not affect allData/teamData
-            renderMailFeedback();    // re-render mail section now that mailData is populated
-        }
-
-        // ===================== RENDER DASHBOARD =====================
-        function renderDashboard() {
-            const ahmedData = teamData.filter(d => d._kam === 'AHMED ASIF RASHID');
-            const nahidData = teamData.filter(d => d._kam === 'NURUZZAMAN NAHID');
-
-            const total = teamData.length;
-            const solved = teamData.filter(d => d._solved).length;
-            const ratio = total > 0 ? Math.round((solved / total) * 100) : 0;
-            const irMails = teamData.filter(d => d._irMail).length;
-            const urgent = teamData.filter(d => d._urgent).length;
-
-            document.getElementById('summaryCards').innerHTML = `
-                <div class="card summary-card border-blue p-5 card-hover fade-in">
-                    <div class="text-xs text-slate-500 font-semibold uppercase tracking-wider mb-2">Total Issues</div>
-                    <div class="text-3xl font-extrabold text-blue-600">${total}</div>
-                </div>
-                <div class="card summary-card border-green p-5 card-hover fade-in">
-                    <div class="text-xs text-slate-500 font-semibold uppercase tracking-wider mb-2">Solved</div>
-                    <div class="text-3xl font-extrabold text-emerald-600">${solved}</div>
-                </div>
-                <div class="card summary-card border-amber p-5 card-hover fade-in">
-                    <div class="text-xs text-slate-500 font-semibold uppercase tracking-wider mb-2">Solve Ratio</div>
-                    <div class="text-3xl font-extrabold text-amber-500">${ratio}%</div>
-                </div>
-                <div class="card summary-card border-purple p-5 card-hover fade-in">
-                    <div class="text-xs text-slate-500 font-semibold uppercase tracking-wider mb-2">IR Mails</div>
-                    <div class="text-3xl font-extrabold text-purple-600">${irMails}</div>
-                </div>
-                <div class="card summary-card border-rose p-5 card-hover fade-in">
-                    <div class="text-xs text-slate-500 font-semibold uppercase tracking-wider mb-2">Urgent</div>
-                    <div class="text-3xl font-extrabold text-rose-500">${urgent}</div>
-                </div>
-            `;
-
-            renderKAMCard('ahmed', ahmedData);
-            renderKAMCard('nahid', nahidData);
-            renderCategoryChart();
-            renderDailyChart();
-            renderMailFeedback();
-        }
-
-        function renderKAMCard(prefix, data) {
-            const total = data.length;
-            const solved = data.filter(d => d._solved).length;
-            const pending = total - solved;
-            const ir = data.filter(d => d._irMail).length;
-            const ratio = total > 0 ? Math.round((solved / total) * 100) : 0;
-            const urgent = data.filter(d => d._urgent).length;
-
-            document.getElementById(`${prefix}Total`).textContent = total;
-            document.getElementById(`${prefix}Solved`).textContent = solved;
-            document.getElementById(`${prefix}Pending`).textContent = pending;
-            document.getElementById(`${prefix}IR`).textContent = ir;
-            document.getElementById(`${prefix}Ratio`).textContent = `${ratio}%`;
-
-            const catCounts = {};
-            data.forEach(d => { if (d._category) catCounts[d._category] = (catCounts[d._category] || 0) + 1; });
-            const topCats = Object.entries(catCounts).sort((a, b) => b[1] - a[1]).slice(0, 3);
-            document.getElementById(`${prefix}Categories`).innerHTML = topCats.length > 0
-                ? topCats.map(([cat, count]) => `<span class="category-pill">${cat} (${count})</span>`).join('')
-                : '<span class="text-xs text-slate-400">No categories found</span>';
-
-            const urgentEl = document.getElementById(`${prefix}Urgent`);
-            if (urgent > 0) {
-                urgentEl.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"></path></svg><span>${urgent} urgent issues</span>`;
-                urgentEl.style.display = 'flex';
-            } else {
-                urgentEl.style.display = 'none';
-            }
-        }
-
-        // ===================== CHARTS =====================
-        function renderCategoryChart() {
-            const isDark = document.documentElement.classList.contains('dark');
-            const catCounts = {};
-            teamData.forEach(d => {
-                const cat = d._category || 'Uncategorized';
-                catCounts[cat] = (catCounts[cat] || 0) + 1;
-            });
-            const labels = Object.keys(catCounts);
-            const values = Object.values(catCounts);
-            const colors = ['#3b82f6', '#10b981', '#f43f5e', '#8b5cf6', '#f59e0b', '#06b6d4', '#84cc16', '#f97316'];
-
-            if (categoryChart) categoryChart.destroy();
-            categoryChart = new Chart(document.getElementById('categoryChart'), {
-                type: 'bar',
-                data: { labels, datasets: [{ label: 'Issues', data: values, backgroundColor: colors.slice(0, labels.length), borderRadius: 8, borderSkipped: false, barThickness: 60 }] },
-                options: {
-                    responsive: true, maintainAspectRatio: false,
-                    plugins: { legend: { position: 'top', labels: { usePointStyle: true, pointStyle: 'circle', padding: 20, font: { size: 12, family: 'Inter' }, color: isDark ? '#94a3b8' : '#64748b' } } },
-                    scales: {
-                        y: { beginAtZero: true, grid: { color: isDark ? '#334155' : '#f1f5f9', drawBorder: false }, ticks: { color: isDark ? '#94a3b8' : '#94a3b8', font: { size: 12, family: 'Inter' } } },
-                        x: { grid: { display: false }, ticks: { color: isDark ? '#94a3b8' : '#64748b', font: { size: 12, family: 'Inter' } } }
-                    }
-                }
-            });
-        }
-
-        function renderDailyChart() {
-            const today = new Date(); today.setHours(0, 0, 0, 0);
-            let days = 7;
-            if (currentPeriod === '30d') days = 30;
-            if (currentPeriod === 'all') days = 90;
-
-            const labels = [], ahmedPoints = [], nahidPoints = [], allPoints = [];
-            for (let i = days - 1; i >= 0; i--) {
-                const d = new Date(today); d.setDate(d.getDate() - i);
-                labels.push(d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
-                const dayStart = new Date(d), dayEnd = new Date(d); dayEnd.setDate(dayEnd.getDate() + 1);
-                const dayIssues = teamData.filter(x => x._date && x._date >= dayStart && x._date < dayEnd);
-                allPoints.push(dayIssues.length);
-                ahmedPoints.push(dayIssues.filter(x => x._kam === 'AHMED ASIF RASHID').length);
-                nahidPoints.push(dayIssues.filter(x => x._kam === 'NURUZZAMAN NAHID').length);
-            }
-
-            document.getElementById('todayCount').textContent = `TODAY: ${teamData.filter(x => x._date && x._date >= today).length}`;
-
-            if (dailyChart) dailyChart.destroy();
-            const isDark = document.documentElement.classList.contains('dark');
-            const datasets = currentPeriod === 'member'
-                ? [
-                    { label: 'Ahmed Asif Rashid', data: ahmedPoints, borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.1)', tension: 0.4, fill: true, pointRadius: 4, pointBackgroundColor: '#3b82f6' },
-                    { label: 'Nuruzzaman Nahid', data: nahidPoints, borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.1)', tension: 0.4, fill: true, pointRadius: 4, pointBackgroundColor: '#10b981' }
-                  ]
-                : [{ label: 'All Members', data: allPoints, borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.08)', tension: 0.4, fill: true, pointRadius: 4, pointBackgroundColor: '#3b82f6', borderWidth: 2 }];
-
-            dailyChart = new Chart(document.getElementById('dailyChart'), {
-                type: 'line',
-                data: { labels, datasets },
-                options: {
-                    responsive: true, maintainAspectRatio: false,
-                    plugins: { legend: { position: 'top', align: 'start', labels: { usePointStyle: true, pointStyle: 'circle', padding: 20, font: { size: 12, family: 'Inter' }, color: isDark ? '#94a3b8' : '#64748b' } } },
-                    scales: {
-                        y: { beginAtZero: true, grid: { color: isDark ? '#334155' : '#f1f5f9', drawBorder: false }, ticks: { color: isDark ? '#94a3b8' : '#94a3b8', font: { size: 12, family: 'Inter' }, stepSize: 1 } },
-                        x: { grid: { display: false }, ticks: { color: isDark ? '#94a3b8' : '#64748b', font: { size: 11, family: 'Inter' } } }
-                    }
-                }
-            });
-        }
-
-        function setPeriod(period, btn) {
-            currentPeriod = period;
-            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            renderDailyChart();
-        }
-
-        // ===================== ISSUES LOG FILTERS =====================
-        function setPillFilter(filter) {
-            currentPill = filter;
-            document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
-            document.getElementById(`pill-${filter}`).classList.add('active');
-            applyFilters();
-        }
-
-        function applyFilters() {
-            const search = document.getElementById('searchInput').value.toLowerCase();
-            const dateFilter = document.getElementById('dateFilter').value;
-            const catFilter = document.getElementById('categoryFilter').value;
-            const kamFilter = document.getElementById('kamFilter').value;
-            const sheetFilter = document.getElementById('sheetFilter').value;
-
-            let data = [...teamData];
-
-            if (currentPill === 'ahmed') data = data.filter(d => d._kam === 'AHMED ASIF RASHID');
-            else if (currentPill === 'nahid') data = data.filter(d => d._kam === 'NURUZZAMAN NAHID');
-            else if (currentPill === 'ir') data = data.filter(d => d._irMail);
-
-            if (search) {
-                data = data.filter(d => {
-                    const raw = d._raw;
-                    for (let key of Object.keys(raw)) {
-                        if (String(raw[key] || '').toLowerCase().includes(search)) return true;
-                    }
-                    return false;
-                });
-            }
-
-            if (dateFilter !== 'all') {
-                const now = new Date();
-                const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-                if (dateFilter === 'today') {
-                    data = data.filter(d => d._date && d._date >= today);
-                } else if (dateFilter === 'week') {
-                    const weekAgo = new Date(today); weekAgo.setDate(weekAgo.getDate() - 7);
-                    data = data.filter(d => d._date && d._date >= weekAgo);
-                } else if (dateFilter === 'month') {
-                    const monthAgo = new Date(today); monthAgo.setDate(monthAgo.getDate() - 30);
-                    data = data.filter(d => d._date && d._date >= monthAgo);
-                }
-            }
-
-            if (catFilter !== 'all') data = data.filter(d => d._category === catFilter);
-            if (kamFilter !== 'all') data = data.filter(d => d._kam === kamFilter);
-            if (sheetFilter !== 'all') data = data.filter(d => d._sheet === sheetFilter);
-
-            filteredData = sortByDateDesc(data);
-            currentPage = 1;
+            document.getElementById('loading-state').classList.add('hidden');
+            document.getElementById('view-tracker').classList.remove('hidden');
+            updateStats();
             renderTable();
+            updateAnalytics();
+            document.getElementById('last-refreshed').innerText = `Last refreshed: ${new Date().toLocaleTimeString()}`;
+            refreshIcon.classList.remove('fa-spin');
+        }
+
+        function parseCSV(csv) {
+            const lines = csv.split('\n').filter(line => line.trim() !== '');
+            if (lines.length < 2) return [];
+            const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, '').replace(/\r/g, ''));
+            const result = [];
+            for(let i = 1; i < lines.length; i++) {
+                const obj = {};
+                const values = parseCSVLine(lines[i]);
+                headers.forEach((header, index) => {
+                    let val = values[index] || '';
+                    if (header === 'Date') obj.date = val;
+                    if (header === 'Time stamp') obj.timestamp = val;
+                    if (header === 'Consignment ID') obj.consignmentId = val;
+                    if (header === 'Merchant Name') obj.merchant = val;
+                    if (header === 'Issue Tag') obj.issueTag = val;
+                    if (header === 'Issue Details') obj.details = val;
+                    if (header === 'In Process') obj.inProcess = (val === 'TRUE' || val === 'true' || val === 'Yes' || val === 'yes' || val === '1');
+                    if (header === 'Sloved And Closed') obj.solved = (val === 'TRUE' || val === 'true' || val === 'Yes' || val === 'yes' || val === '1');
+                    if (header === 'Remarks') obj.remarks = val;
+                });
+                if (obj.date && obj.merchant) result.push(obj);
+            }
+            return result;
+        }
+
+        function parseCSVLine(line) {
+            const result = [];
+            let current = '';
+            let inQuotes = false;
+            for (let i = 0; i < line.length; i++) {
+                const char = line[i];
+                const nextChar = line[i + 1];
+                if (char === '"') {
+                    if (inQuotes && nextChar === '"') { current += '"'; i++; }
+                    else { inQuotes = !inQuotes; }
+                } else if (char === ',' && !inQuotes) {
+                    result.push(current.trim());
+                    current = '';
+                } else { current += char; }
+            }
+            result.push(current.trim());
+            return result.map(v => v.replace(/^"|"$/g, '').replace(/\r/g, ''));
+        }
+
+        function updateStats() {
+            const total = issuesData.length;
+            const open = issuesData.filter(i => getStatus(i) === 'Open').length;
+            const progress = issuesData.filter(i => getStatus(i) === 'In Progress').length;
+            const resolved = issuesData.filter(i => getStatus(i) === 'Resolved').length;
+            animateValue('stat-total', parseInt(document.getElementById('stat-total').innerText) || 0, total, 800);
+            animateValue('stat-open', parseInt(document.getElementById('stat-open').innerText) || 0, open, 800);
+            animateValue('stat-progress', parseInt(document.getElementById('stat-progress').innerText) || 0, progress, 800);
+            animateValue('stat-resolved', parseInt(document.getElementById('stat-resolved').innerText) || 0, resolved, 800);
+            setTimeout(() => {
+                document.getElementById('bar-open').style.width = total ? `${(open/total)*100}%` : '0%';
+                document.getElementById('bar-progress').style.width = total ? `${(progress/total)*100}%` : '0%';
+                document.getElementById('bar-resolved').style.width = total ? `${(resolved/total)*100}%` : '0%';
+            }, 100);
+        }
+
+        function animateValue(id, start, end, duration) {
+            if (start === end) return;
+            const range = end - start;
+            let current = start;
+            const increment = end > start ? 1 : -1;
+            const stepTime = Math.abs(Math.floor(duration / range)) || 10;
+            const obj = document.getElementById(id);
+            const timer = setInterval(function() {
+                current += increment;
+                obj.innerHTML = current;
+                if (current == end) clearInterval(timer);
+            }, stepTime);
         }
 
         function renderTable() {
-            const tbody = document.getElementById('tableBody');
-            const thead = document.getElementById('tableHeader');
+            const tbody = document.getElementById('issuesTableBody');
+            const search = document.getElementById('searchInput').value.toLowerCase();
+            const statusFilter = document.getElementById('statusFilter').value;
+            const tagFilter = document.getElementById('tagFilter').value;
+            tbody.innerHTML = '';
+            const dataTags = [...new Set(issuesData.map(i => i.issueTag))].filter(Boolean);
+            const allTags = [...new Set([...Object.keys(TAG_COLORS), ...dataTags])];
+            const tagSelect = document.getElementById('tagFilter');
+            const currentTag = tagSelect.value;
+            tagSelect.innerHTML = '<option value="All">All Issue Tags</option>';
+            allTags.forEach(tag => { tagSelect.innerHTML += `<option value="${tag}" ${tag === currentTag ? 'selected' : ''}>${tag}</option>`; });
 
-            if (filteredData.length === 0) {
-                thead.innerHTML = '<th style="width:100%"></th>';
-                tbody.innerHTML = '<tr><td colspan="100" class="empty-state">No issues match your filters.</td></tr>';
-                document.getElementById('showingText').textContent = 'Showing 0 of 0 issues';
-                document.getElementById('pagination').innerHTML = '';
-                return;
-            }
-
-            const internalKeys = ['_sheet', '_sheetIndex', '_kamOriginal', '_kamFoundCol', '_raw', '_sheetDisplay', '_dateRaw'];
-            const allKeys = new Set();
-            filteredData.forEach(row => Object.keys(row._raw).forEach(k => allKeys.add(k)));
-
-            function shouldExcludeColumn(colName) {
-                const lower = colName.toLowerCase().trim();
-                if (internalKeys.includes(colName)) return true;
-                if (colName === COL_MAP.kam || colName === COL_MAP.status || colName === COL_MAP.opsReply) return true;
-                if (COL_MAP.opsReplyCols && COL_MAP.opsReplyCols.includes(colName)) return true;
-                if (lower.includes('email') || lower.includes('e-mail') || lower.includes('@')) return true;
-                if (lower.includes('address') && !lower.includes('consignment')) return true;
-                if (lower.includes('comment')) return true;
-                if (lower.includes('reply')) return true;
-                if (lower.includes('ops end') || lower.includes('opsend')) return true;
-                if (lower.includes('ops reply') || lower.includes('opsreply')) return true;
-                if (lower === 'ops') return true;
-                return false;
-            }
-
-            let displayCols = Array.from(allKeys).filter(k => !shouldExcludeColumn(k));
-
-            const detailKeywords = ['issue detail', 'details', 'detail', 'description', 'desc', 'remarks', 'notes'];
-            const priorityCols = [];
-            const otherCols = [];
-            for (const col of displayCols) {
-                const lower = col.toLowerCase();
-                if (detailKeywords.some(kw => lower.includes(kw))) {
-                    priorityCols.push(col);
-                } else {
-                    otherCols.push(col);
-                }
-            }
-            priorityCols.sort((a, b) => {
-                const aLower = a.toLowerCase();
-                const bLower = b.toLowerCase();
-                if (aLower.includes('issue detail')) return -1;
-                if (bLower.includes('issue detail')) return 1;
-                return a.length - b.length;
+            let filtered = issuesData.filter(issue => {
+                const status = getStatus(issue);
+                const matchesSearch =
+                    (issue.ticketId && issue.ticketId.toLowerCase().includes(search)) ||
+                    (issue.merchant && issue.merchant.toLowerCase().includes(search)) ||
+                    (issue.consignmentId && issue.consignmentId.toLowerCase().includes(search)) ||
+                    (issue.details && issue.details.toLowerCase().includes(search));
+                const matchesStatus = statusFilter === 'All' || status === statusFilter;
+                const matchesTag = tagFilter === 'All' || issue.issueTag === tagFilter;
+                return matchesSearch && matchesStatus && matchesTag;
             });
-            displayCols = [...priorityCols, ...otherCols].slice(0, 5);
 
-            let headerHTML = '<th style="width:40px"></th><th>KAM</th><th>Status</th>';
-            displayCols.forEach(col => {
-                headerHTML += `<th>${col}</th>`;
-            });
-            headerHTML += '<th>Comments 1 (Ops End)</th><th>Comments 2 (Ops End)</th><th>Concern Hub</th>';
-            thead.innerHTML = headerHTML;
-
-            const start = (currentPage - 1) * PAGE_SIZE;
-            const end = Math.min(start + PAGE_SIZE, filteredData.length);
-            const pageData = filteredData.slice(start, end);
-
-            const bodyHTML = pageData.map((d, idx) => {
-                let statusDot = 'status-pending';
-                let statusText = 'Pending';
-                if (d._solved) { statusDot = 'status-solved'; statusText = 'Solved'; }
-                else if (d._urgent) { statusDot = 'status-urgent'; statusText = 'Urgent'; }
-
-                const kamClass = d._kam === 'AHMED ASIF RASHID' ? 'kam-tag-ahmed' : 'kam-tag-nahid';
-                const kamInitials = d._kam === 'AHMED ASIF RASHID' ? 'AR' : 'NN';
-
-                const comment1Text = d._comment1 || '-';
-                const comment2Text = d._comment2 || '-';
-
-                let cells = '';
-                displayCols.forEach(col => {
-                    const val = d._raw[col];
-                    cells += `<td>${val !== undefined && val !== null && val !== '' ? val : '-'}</td>`;
+            if (filtered.length === 0) {
+                document.getElementById('emptyState').classList.remove('hidden');
+            } else {
+                document.getElementById('emptyState').classList.add('hidden');
+                filtered.forEach(issue => {
+                    const status = getStatus(issue);
+                    let statusClass = '', statusDot = '';
+                    if (status === 'Open') { statusClass = 'status-open'; statusDot = 'bg-yellow-500'; }
+                    else if (status === 'In Progress') { statusClass = 'status-progress'; statusDot = 'bg-blue-500'; }
+                    else if (status === 'Resolved') { statusClass = 'status-resolved'; statusDot = 'bg-green-500'; }
+                    const detailsText = issue.details || '-';
+                    const row = `
+                        <tr class="hover-row transition-colors border-b last:border-0 theme-transition" style="border-color: var(--border-color);">
+                            <td class="p-4 font-mono text-gold font-medium text-xs">${issue.ticketId || '-'}</td>
+                            <td class="p-4 text-xs theme-transition" style="color: var(--text-muted);">${issue.date}<br><span class="text-xs opacity-70">${issue.timestamp}</span></td>
+                            <td class="p-4 font-medium text-sm theme-transition" style="color: var(--text-primary);">${issue.merchant || '-'}</td>
+                            <td class="p-4 font-mono text-xs theme-transition" style="color: var(--text-muted);">${issue.consignmentId || '-'}</td>
+                            <td class="p-4"><span class="tag-pill border ${getTagColor(issue.issueTag)}">${issue.issueTag || 'General'}</span></td>
+                            <td class="p-4 details-cell">
+                                <div class="details-preview text-xs theme-transition" style="color: var(--text-muted);">${detailsText}</div>
+                            </td>
+                            <td class="p-4">
+                                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${statusClass}">
+                                    <span class="w-1.5 h-1.5 rounded-full ${statusDot}"></span>
+                                    ${status}
+                                </span>
+                            </td>
+                            <td class="p-4 text-right">
+                                <button onclick="openModal('${issue.ticketId}')" class="text-gold hover:opacity-80 text-xs font-bold uppercase tracking-wider transition-colors">View</button>
+                            </td>
+                        </tr>
+                    `;
+                    tbody.innerHTML += row;
                 });
-
-                return `<tr>
-                    <td><span class="text-xs text-slate-400">${start + idx + 1}</span></td>
-                    <td><span class="kam-tag ${kamClass}"><span style="width:18px;height:18px;border-radius:50%;background:${d._kam === 'AHMED ASIF RASHID' ? '#3b82f6' : '#10b981'};color:white;font-size:10px;display:inline-flex;align-items:center;justify-content:center;font-weight:700;">${kamInitials}</span>${d._kam === 'AHMED ASIF RASHID' ? 'Ahmed Asif' : 'Nuruzzaman'}</span></td>
-                    <td><span class="flex items-center gap-2"><span class="status-dot ${statusDot}"></span><span class="text-xs font-medium ${d._solved ? 'text-emerald-600' : d._urgent ? 'text-rose-500' : 'text-amber-500'}">${statusText}</span></span></td>
-                    ${cells}
-                    <td><span class="text-xs text-slate-600">${comment1Text}</span></td>
-                    <td><span class="text-xs text-slate-600">${comment2Text}</span></td>
-                    <td><span class="text-xs px-2 py-1 rounded-md font-semibold" style="background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;letter-spacing:0.04em;">${d._concernHub || '-'}</span></td>
-                </tr>`;
-            }).join('');
-
-            tbody.innerHTML = bodyHTML;
-
-            document.getElementById('showingText').textContent = `Showing ${start + 1}-${end} of ${filteredData.length} issues`;
-
-            const totalPages = Math.ceil(filteredData.length / PAGE_SIZE);
-            let pagHTML = '';
-            if (totalPages > 1) {
-                pagHTML += `<button onclick="changePage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''} class="px-3 py-1 text-xs rounded-md border border-slate-200 ${currentPage === 1 ? 'text-slate-300' : 'text-slate-600 hover:bg-slate-50'}">Prev</button>`;
-                for (let i = 1; i <= totalPages; i++) {
-                    if (i === 1 || i === totalPages || (i >= currentPage - 1 && i <= currentPage + 1)) {
-                        pagHTML += `<button onclick="changePage(${i})" class="px-3 py-1 text-xs rounded-md ${i === currentPage ? 'bg-blue-600 text-white' : 'border border-slate-200 text-slate-600 hover:bg-slate-50'}">${i}</button>`;
-                    } else if (i === currentPage - 2 || i === currentPage + 2) {
-                        pagHTML += `<span class="px-2 text-xs text-slate-400">...</span>`;
-                    }
-                }
-                pagHTML += `<button onclick="changePage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''} class="px-3 py-1 text-xs rounded-md border border-slate-200 ${currentPage === totalPages ? 'text-slate-300' : 'text-slate-600 hover:bg-slate-50'}">Next</button>`;
             }
-            document.getElementById('pagination').innerHTML = pagHTML;
         }
 
-        function changePage(page) {
-            const totalPages = Math.ceil(filteredData.length / PAGE_SIZE);
-            if (page < 1 || page > totalPages) return;
-            currentPage = page;
+        function openModal(ticketId) {
+            const issue = issuesData.find(i => i.ticketId === ticketId);
+            if (!issue) return;
+            currentModalIssue = issue;
+            document.getElementById('modal-ticket-id').innerText = issue.ticketId;
+            document.getElementById('modal-merchant').innerText = issue.merchant || '-';
+            document.getElementById('modal-consignment').innerText = issue.consignmentId || '-';
+            document.getElementById('modal-tag').innerText = issue.issueTag || 'General';
+            document.getElementById('modal-tag').className = `tag-pill border ${getTagColor(issue.issueTag)}`;
+            document.getElementById('modal-date').innerText = `${issue.date} ${issue.timestamp}`;
+            document.getElementById('modal-details').innerText = issue.details || '-';
+            updateModalButtons(issue);
+            document.getElementById('issueModal').classList.remove('hidden');
+        }
+
+        function updateModalButtons(issue) {
+            const status = getStatus(issue);
+            ['open', 'progress', 'resolved'].forEach(s => {
+                const btn = document.getElementById(`btn-${s}`);
+                btn.classList.remove('ring-2', 'ring-white', 'ring-gray-400', 'scale-105', 'shadow-lg');
+                btn.style.opacity = '0.5';
+            });
+            let activeBtn = '';
+            if (status === 'Open') activeBtn = 'btn-open';
+            if (status === 'In Progress') activeBtn = 'btn-progress';
+            if (status === 'Resolved') activeBtn = 'btn-resolved';
+            if (activeBtn) {
+                const btn = document.getElementById(activeBtn);
+                btn.classList.add('ring-2', currentTheme === 'dark' ? 'ring-white' : 'ring-gray-400', 'scale-105', 'shadow-lg');
+                btn.style.opacity = '1';
+            }
+        }
+
+        function updateStatus(newStatus) {
+            if (!currentModalIssue) return;
+            if (newStatus === 'Open') { currentModalIssue.inProcess = false; currentModalIssue.solved = false; }
+            else if (newStatus === 'In Progress') { currentModalIssue.inProcess = true; currentModalIssue.solved = false; }
+            else if (newStatus === 'Resolved') { currentModalIssue.inProcess = false; currentModalIssue.solved = true; }
+            updateModalButtons(currentModalIssue);
+            updateStats();
             renderTable();
+            updateAnalytics();
+            showToast(`Status updated to ${newStatus}`, 'success');
         }
 
-        // ===================== SETTINGS =====================
-        function openSettings() {
-            const content = `
-                <div><label class="block text-sm font-medium text-slate-700 mb-1">KAM / Email Column</label><input type="text" id="setting-kam" value="${COL_MAP.kam || ''}" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500"></div>
-                <div><label class="block text-sm font-medium text-slate-700 mb-1">Status Column</label><input type="text" id="setting-status" value="${COL_MAP.status || ''}" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500"></div>
-                <div><label class="block text-sm font-medium text-slate-700 mb-1">Category Column</label><input type="text" id="setting-category" value="${COL_MAP.category || ''}" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500"></div>
-                <div><label class="block text-sm font-medium text-slate-700 mb-1">Date Column</label><input type="text" id="setting-date" value="${COL_MAP.date || ''}" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500"></div>
-                <div><label class="block text-sm font-medium text-slate-700 mb-1">IR Mail Column</label><input type="text" id="setting-ir" value="${COL_MAP.irMail || ''}" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500"></div>
-                <div><label class="block text-sm font-medium text-slate-700 mb-1">Comments 1 (Ops End) Column</label><input type="text" id="setting-ops" value="${COL_MAP.opsReply || ''}" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500"></div>
-            `;
-            document.getElementById('settingsContent').innerHTML = content;
-            document.getElementById('settingsModal').classList.remove('hidden');
+        function closeModal() { document.getElementById('issueModal').classList.add('hidden'); currentModalIssue = null; }
+        function showRaiseIssue() { document.getElementById('raiseIssueModal').classList.remove('hidden'); }
+        function closeRaiseIssue() { document.getElementById('raiseIssueModal').classList.add('hidden'); }
+
+        function submitNewIssue() {
+            const merchant = document.getElementById('new-merchant').value;
+            const consignment = document.getElementById('new-consignment').value;
+            const tag = document.getElementById('new-tag').value;
+            const details = document.getElementById('new-details').value;
+            if (!merchant || !consignment || !details) { showToast('Please fill all fields', 'error'); return; }
+            const now = new Date();
+            const newIssue = { date: now.toISOString().split('T')[0], timestamp: now.toTimeString().split(' ')[0], consignmentId: consignment, merchant: merchant, issueTag: tag, details: details, inProcess: false, solved: false };
+            issuesData.unshift(newIssue);
+            issuesData.forEach((issue, i) => { issue.ticketId = generateTicketId(issue.date, i); });
+            updateStats(); renderTable(); updateAnalytics(); closeRaiseIssue(); showToast('New issue raised successfully!', 'success');
+            document.getElementById('new-merchant').value = '';
+            document.getElementById('new-consignment').value = '';
+            document.getElementById('new-details').value = '';
         }
 
-        function closeSettings() {
-            document.getElementById('settingsModal').classList.add('hidden');
+        function updateAnalytics() { renderTagChart(); renderStatusChart(); renderTimeChart(); renderTopMerchants(); renderResolutionChart(); }
+
+        function getChartColors() {
+            return {
+                grid: currentTheme === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.06)',
+                tick: currentTheme === 'dark' ? '#9ca3af' : '#6b7280',
+                legend: currentTheme === 'dark' ? '#9ca3af' : '#6b7280'
+            };
         }
 
-        function saveSettings() {
-            COL_MAP.kam = document.getElementById('setting-kam').value.trim() || null;
-            COL_MAP.status = document.getElementById('setting-status').value.trim() || null;
-            COL_MAP.category = document.getElementById('setting-category').value.trim() || null;
-            COL_MAP.date = document.getElementById('setting-date').value.trim() || null;
-            COL_MAP.irMail = document.getElementById('setting-ir').value.trim() || null;
-            COL_MAP.opsReply = document.getElementById('setting-ops').value.trim() || null;
-            closeSettings();
-            loadAllSheets();
-        }
-
-        function refreshAll() {
-            loadAllSheets();
-        }
-
-        // ===================== DARK MODE TOGGLE =====================
-        function toggleDarkMode() {
-            const html = document.documentElement;
-            const toggle = document.getElementById('themeToggle');
-            const isDark = html.classList.toggle('dark');
-            
-            toggle.classList.toggle('dark', isDark);
-            localStorage.setItem('carrybee-dark', isDark ? '1' : '0');
-            
-            setTimeout(() => {
-                if (categoryChart) { categoryChart.destroy(); renderCategoryChart(); }
-                if (dailyChart) { dailyChart.destroy(); renderDailyChart(); }
-            }, 50);
-        }
-
-        function initTheme() {
-            const saved = localStorage.getItem('carrybee-dark');
-            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-            const isDark = saved === null ? prefersDark : saved === '1';
-            
-            const html = document.documentElement;
-            const toggle = document.getElementById('themeToggle');
-            
-            if (isDark) {
-                html.classList.add('dark');
-                toggle.classList.add('dark');
-            } else {
-                html.classList.remove('dark');
-                toggle.classList.remove('dark');
-            }
-        }
-
-        // ===================== ADMIN PANEL =====================
-        function openAdminPanel() {
-            if (!isAdmin()) {
-                alert('Only admins can access user management.');
-                return;
-            }
-            renderUsersList();
-            document.getElementById('adminModal').classList.remove('hidden');
-            document.getElementById('adminError').style.display = 'none';
-        }
-
-        function closeAdminPanel() {
-            document.getElementById('adminModal').classList.add('hidden');
-        }
-
-        function renderUsersList() {
-            const list = document.getElementById('usersList');
-            const allUsers = getAllUsers();
-            const current = getCurrentUser();
-
-            list.innerHTML = allUsers.map(u => {
-                const isBuiltIn = AUTH_USERS.some(b => b.username === u.username);
-                const isSelf = current && current.username === u.username;
-                const roleBadge = u.role === 'admin' 
-                    ? '<span style="padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 700; background: #d1fae5; color: #065f46;">ADMIN</span>'
-                    : '<span style="padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 700; background: #f1f5f9; color: #475569;">USER</span>';
-
-                return `<div style="display: flex; align-items: center; justify-content: space-between; padding: 12px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-card); margin-bottom: 8px;">
-                    <div style="display: flex; align-items: center; gap: 12px;">
-                        <div style="width: 32px; height: 32px; border-radius: 50%; background: #3b82f6; color: white; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700;">${u.username.substring(0,2).toUpperCase()}</div>
-                        <div>
-                            <div style="font-size: 14px; font-weight: 600; color: var(--text-primary);">${u.username}</div>
-                            <div style="display: flex; align-items: center; gap: 6px; margin-top: 2px;">${roleBadge}${isBuiltIn ? '<span style="font-size: 10px; color: var(--text-muted);">Built-in</span>' : ''}${isSelf ? '<span style="font-size: 10px; color: #3b82f6;">You</span>' : ''}</div>
-                        </div>
-                    </div>
-                    <button onclick="removeUser('${u.username}')" style="padding: 4px 10px; font-size: 11px; font-weight: 600; color: #dc2626; background: #fef2f2; border: 1px solid #fecaca; border-radius: 6px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='#fee2e2'" onmouseout="this.style.background='#fef2f2'">Remove</button>
-                </div>`;
-            }).join('');
-        }
-
-        function addNewUser() {
-            const username = document.getElementById('newUserName').value.trim().toLowerCase();
-            const password = document.getElementById('newUserPass').value.trim();
-            const role = document.getElementById('newUserRole').value;
-            const errorEl = document.getElementById('adminError');
-
-            if (!username || !password) {
-                errorEl.textContent = 'Username and password are required.';
-                errorEl.style.display = 'block';
-                return;
-            }
-            if (username.length < 3 || password.length < 4) {
-                errorEl.textContent = 'Username min 3 chars, password min 4 chars.';
-                errorEl.style.display = 'block';
-                return;
-            }
-
-            const allUsers = getAllUsers();
-            if (allUsers.some(u => u.username === username)) {
-                errorEl.textContent = 'Username already exists.';
-                errorEl.style.display = 'block';
-                return;
-            }
-
-            const dynamic = JSON.parse(localStorage.getItem(AUTH_DYNAMIC_USERS_KEY) || '[]');
-            dynamic.push({ username, password, role });
-            localStorage.setItem(AUTH_DYNAMIC_USERS_KEY, JSON.stringify(dynamic));
-
-            errorEl.style.display = 'none';
-            document.getElementById('newUserName').value = '';
-            document.getElementById('newUserPass').value = '';
-            document.getElementById('newUserRole').value = 'user';
-            renderUsersList();
-        }
-
-        function removeUser(username) {
-            if (!isAdmin()) return;
-            const current = getCurrentUser();
-            const isSelf = current && current.username === username;
-            const isBuiltIn = AUTH_USERS.some(b => b.username === username);
-
-            let msg = `Remove user "${username}"?`;
-            if (isSelf) msg = `WARNING: You are removing yourself!\n\nRemove "${username}"? You will be logged out immediately.`;
-            if (isBuiltIn && !isSelf) msg = `WARNING: This is a built-in user.\n\nRemove "${username}"? They can be restored by reloading the page.`;
-
-            if (!confirm(msg)) return;
-
-            // Remove from dynamic users
-            let dynamic = JSON.parse(localStorage.getItem(AUTH_DYNAMIC_USERS_KEY) || '[]');
-            dynamic = dynamic.filter(u => u.username !== username);
-            localStorage.setItem(AUTH_DYNAMIC_USERS_KEY, JSON.stringify(dynamic));
-
-            // If removing self, log out
-            if (isSelf) {
-                doLogout();
-                return;
-            }
-
-            renderUsersList();
-        }
-
-        // ===================== PASSWORD TOGGLE =====================
-        function togglePassword() {
-            const input = document.getElementById('authPass');
-            const eye = document.getElementById('eyeIcon');
-            const eyeOff = document.getElementById('eyeOffIcon');
-            if (input.type === 'password') {
-                input.type = 'text';
-                eye.classList.add('hidden');
-                eyeOff.classList.remove('hidden');
-            } else {
-                input.type = 'password';
-                eye.classList.remove('hidden');
-                eyeOff.classList.add('hidden');
-            }
-        }
-
-
-
-        // ===================== MAIL FEEDBACK TRACKER =====================
-        function renderMailFeedback() {
-            const mfData = mailData;
-            const total = mfData.length;
-            const solved = mfData.filter(d => d._solved).length;
-            const pending = total - solved;
-            const ratio = total > 0 ? Math.round((solved / total) * 100) : 0;
-
-            document.getElementById('mfTotalRaised').textContent = total;
-            document.getElementById('mfPending').textContent = pending;
-            document.getElementById('mfSolved').textContent = solved;
-            document.getElementById('mfSolveRatio').textContent = ratio + '%';
-
-            const ahmedData = mfData.filter(d => d._kam === 'AHMED ASIF RASHID');
-            const ahmedTotal = ahmedData.length;
-            const ahmedSolved = ahmedData.filter(d => d._solved).length;
-            const ahmedPending = ahmedTotal - ahmedSolved;
-            const ahmedRatio = ahmedTotal > 0 ? Math.round((ahmedSolved / ahmedTotal) * 100) : 0;
-            document.getElementById('mfAhmedRaised').textContent = ahmedTotal;
-            document.getElementById('mfAhmedPending').textContent = ahmedPending;
-            document.getElementById('mfAhmedSolved').textContent = ahmedSolved;
-            document.getElementById('mfAhmedRatio').textContent = ahmedRatio + '%';
-            document.getElementById('mfAhmedProgress').style.width = ahmedRatio + '%';
-
-            const nahidData = mfData.filter(d => d._kam === 'NURUZZAMAN NAHID');
-            const nahidTotal = nahidData.length;
-            const nahidSolved = nahidData.filter(d => d._solved).length;
-            const nahidPending = nahidTotal - nahidSolved;
-            const nahidRatio = nahidTotal > 0 ? Math.round((nahidSolved / nahidTotal) * 100) : 0;
-            document.getElementById('mfNahidRaised').textContent = nahidTotal;
-            document.getElementById('mfNahidPending').textContent = nahidPending;
-            document.getElementById('mfNahidSolved').textContent = nahidSolved;
-            document.getElementById('mfNahidRatio').textContent = nahidRatio + '%';
-            document.getElementById('mfNahidProgress').style.width = nahidRatio + '%';
-
-            applyMFFilters();
-        }
-
-        function applyMFFilters() {
-            const search = document.getElementById('mfSearchInput').value.toLowerCase();
-            const statusFilter = document.getElementById('mfStatusFilter').value;
-            const kamFilter = document.getElementById('mfKAMFilter').value;
-
-            let data = mailData.slice();
-
-            if (search) {
-                data = data.filter(d => {
-                    const raw = d._raw;
-                    for (let key of Object.keys(raw)) {
-                        if (String(raw[key] || '').toLowerCase().includes(search)) return true;
+        function renderTagChart() {
+            const ctx = document.getElementById('tagChart').getContext('2d');
+            const tags = {};
+            issuesData.forEach(i => { if (i.issueTag) tags[i.issueTag] = (tags[i.issueTag] || 0) + 1; });
+            const labels = Object.keys(tags);
+            const data = Object.values(tags);
+            const colors = labels.map(tag => TAG_CHART_COLORS[tag] || '#94a3b8');
+            const cc = getChartColors();
+            if (charts.tag) charts.tag.destroy();
+            charts.tag = new Chart(ctx, {
+                type: 'bar',
+                data: { labels: labels, datasets: [{ label: 'Issues', data: data, backgroundColor: colors, borderRadius: 6, borderSkipped: false }] },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { beginAtZero: true, grid: { color: cc.grid }, ticks: { color: cc.tick, stepSize: 1 } },
+                        x: { grid: { display: false }, ticks: { color: cc.tick } }
                     }
-                    return false;
-                });
-            }
-
-            if (statusFilter !== 'all') {
-                if (statusFilter === 'solved') data = data.filter(d => d._solved);
-                else if (statusFilter === 'pending') data = data.filter(d => !d._solved && !d._urgent);
-                else if (statusFilter === 'urgent') data = data.filter(d => d._urgent);
-            }
-
-            if (kamFilter !== 'all') data = data.filter(d => d._kam === kamFilter);
-
-            // Sort: Pending first (by date desc), then Solved (by date desc)
-            mfFilteredData = data.sort((a, b) => {
-                if (!a._solved && b._solved) return -1;
-                if (a._solved && !b._solved) return 1;
-                if (a._date && b._date) return b._date - a._date;
-                if (a._date && !b._date) return -1;
-                if (!a._date && b._date) return 1;
-                return 0;
+                }
             });
-            mfCurrentPage = 1;
-            renderMFTable();
         }
 
-        function getResolutionGap(issueDate, solvedDate, isSolved) {
-            if (!isSolved || !issueDate) return '-';
-            const end = solvedDate || new Date();
-            const diffMs = end - issueDate;
-            const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-            if (diffDays < 0) return '-';
-            if (diffDays === 0) return 'Same day';
-            return diffDays + 'd';
+        function renderStatusChart() {
+            const ctx = document.getElementById('statusChart').getContext('2d');
+            const counts = { 'Open': issuesData.filter(i => getStatus(i) === 'Open').length, 'In Progress': issuesData.filter(i => getStatus(i) === 'In Progress').length, 'Resolved': issuesData.filter(i => getStatus(i) === 'Resolved').length };
+            const cc = getChartColors();
+            if (charts.status) charts.status.destroy();
+            charts.status = new Chart(ctx, {
+                type: 'doughnut',
+                data: { labels: Object.keys(counts), datasets: [{ data: Object.values(counts), backgroundColor: ['#fbbf24', '#3b82f6', '#22c55e'], borderWidth: 0, hoverOffset: 4 }] },
+                options: {
+                    responsive: true, maintainAspectRatio: false, cutout: '70%',
+                    plugins: { legend: { position: 'bottom', labels: { color: cc.legend, usePointStyle: true, padding: 20 } } }
+                }
+            });
         }
 
-        function renderMFTable() {
-            const tbody = document.getElementById('mfTableBody');
+        function renderTimeChart() {
+            const ctx = document.getElementById('timeChart').getContext('2d');
+            const dates = {};
+            [...issuesData].sort((a,b) => new Date(a.date) - new Date(b.date)).forEach(i => { if (i.date) dates[i.date] = (dates[i.date] || 0) + 1; });
+            const cc = getChartColors();
+            if (charts.time) charts.time.destroy();
+            charts.time = new Chart(ctx, {
+                type: 'line',
+                data: { labels: Object.keys(dates), datasets: [{ label: 'Issues', data: Object.values(dates), borderColor: '#fbbf24', backgroundColor: 'rgba(251, 191, 36, 0.1)', tension: 0.4, fill: true, pointBackgroundColor: '#fbbf24', pointBorderColor: '#fff', pointBorderWidth: 2, pointRadius: 4 }] },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { beginAtZero: true, grid: { color: cc.grid }, ticks: { color: cc.tick, stepSize: 1 } },
+                        x: { grid: { color: cc.grid }, ticks: { color: cc.tick } }
+                    }
+                }
+            });
+        }
 
-            if (mfFilteredData.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="100" class="mf-empty"><div class="mf-empty-icon">📭</div><div>No mail feedback found.</div></td></tr>';
-                document.getElementById('mfShowingText').textContent = 'Showing 0 of 0 mails';
-                document.getElementById('mfPagination').innerHTML = '';
-                return;
+        function renderTopMerchants() {
+            const merchants = {};
+            issuesData.forEach(i => { if (i.merchant) merchants[i.merchant] = (merchants[i.merchant] || 0) + 1; });
+            const sorted = Object.entries(merchants).sort((a,b) => b[1] - a[1]).slice(0, 6);
+            const container = document.getElementById('topMerchantsList');
+            container.innerHTML = '';
+            sorted.forEach(([name, count]) => {
+                container.innerHTML += `
+                    <div class="flex items-center justify-between p-3 rounded-lg border theme-transition" style="background: var(--bg-modal-content); border-color: var(--border-color);">
+                        <span class="text-sm font-medium theme-transition" style="color: var(--text-primary);">${name}</span>
+                        <span class="text-xs font-bold text-gold bg-gold/10 px-2 py-1 rounded-full">${count} issue${count > 1 ? 's' : ''}</span>
+                    </div>
+                `;
+            });
+        }
+
+        function renderResolutionChart() {
+            const ctx = document.getElementById('resolutionChart').getContext('2d');
+            const resolved = issuesData.filter(i => getStatus(i) === 'Resolved').length;
+            const total = issuesData.length;
+            const percent = total ? Math.round((resolved/total)*100) : 0;
+            document.getElementById('resolutionPercent').innerText = `${percent}%`;
+            if (charts.resolution) charts.resolution.destroy();
+            charts.resolution = new Chart(ctx, {
+                type: 'doughnut',
+                data: { labels: ['Resolved', 'Unresolved'], datasets: [{ data: [resolved, total - resolved], backgroundColor: ['#22c55e', currentTheme === 'dark' ? '#1e293b' : '#e5e7eb'], borderWidth: 0, circumference: 180, rotation: 270 }] },
+                options: { responsive: true, maintainAspectRatio: false, cutout: '75%', plugins: { legend: { display: false }, tooltip: { enabled: false } } }
+            });
+        }
+
+        function switchView(view) {
+            document.getElementById('view-tracker').classList.add('hidden');
+            document.getElementById('view-analytics').classList.add('hidden');
+            document.getElementById('nav-tracker').classList.remove('active');
+            document.getElementById('nav-analytics').classList.remove('active');
+            document.getElementById(`view-${view}`).classList.remove('hidden');
+            document.getElementById(`nav-${view}`).classList.add('active');
+            document.getElementById('page-title').innerText = view === 'tracker' ? 'Issue Tracker' : 'Analytics';
+            if (view === 'analytics') {
+                setTimeout(() => { Object.values(charts).forEach(c => { if(c) c.resize(); }); }, 100);
             }
-
-            const start = (mfCurrentPage - 1) * MF_PAGE_SIZE;
-            const end = Math.min(start + MF_PAGE_SIZE, mfFilteredData.length);
-            const pageData = mfFilteredData.slice(start, end);
-
-            const bodyHTML = pageData.map((d, idx) => {
-                let statusClass = 'mf-status-pending';
-                let statusText = 'Pending';
-                let statusIcon = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>';
-                if (d._solved) {
-                    statusClass = 'mf-status-solved';
-                    statusText = 'Solved';
-                    statusIcon = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>';
-                } else if (d._urgent) {
-                    statusClass = 'mf-status-urgent';
-                    statusText = 'Urgent';
-                    statusIcon = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/></svg>';
-                }
-
-                const kamClass = d._kam === 'AHMED ASIF RASHID' ? 'mf-kam-tag-purple' : 'mf-kam-tag-green';
-                const kamInitials = d._kam === 'AHMED ASIF RASHID' ? 'AA' : 'NN';
-                const kamShort = d._kam === 'AHMED ASIF RASHID' ? 'Ahmed Asif' : 'Nuruzzaman';
-
-                const dateStr = d._date ? d._date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZoneName: 'short' }) : (d._dateRaw || '-');
-
-                let subject = d._raw['Mail Subject Line'] || d._raw['Mail Subject'] || d._raw['Subject'] || d._raw['Issue'] || d._raw['Issue Details'] || d._category || '-';
-                if (subject === '-') subject = d._raw[COL_MAP.details || ''] || d._category || '-';
-
-                let solvedDateStr = '-';
-                let solvedDateObj = null;
-                if (d._solved) {
-                    const possibleSolvedCols = ['Slove date', 'Solved Date', 'Resolved Date', 'Closed Date', 'Date Solved', 'Completion Date'];
-                    for (let col of possibleSolvedCols) {
-                        if (d._raw[col]) {
-                            const parsed = parseDateRobust(d._raw[col]);
-                            if (parsed) {
-                                solvedDateObj = parsed;
-                                solvedDateStr = parsed.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZoneName: 'short' });
-                                break;
-                            }
-                        }
-                    }
-                    if (solvedDateStr === '-') {
-                        solvedDateStr = '<span style="color: #94a3b8; font-style: italic;">—</span>';
-                    }
-                }
-
-                const gap = getResolutionGap(d._date, solvedDateObj, d._solved);
-                const gapClass = d._solved ? 'mf-gap-solved' : 'mf-gap';
-
-                return '<tr>' +
-                    '<td><span class="text-xs text-slate-400">' + (start + idx + 1) + '</span></td>' +
-                    '<td><span class="text-xs text-slate-600">' + dateStr + '</span></td>' +
-                    '<td><span class="mf-kam-tag ' + kamClass + '"><span style="width:18px;height:18px;border-radius:50%;background:' + (d._kam === 'AHMED ASIF RASHID' ? '#8b5cf6' : '#10b981') + ';color:white;font-size:9px;display:inline-flex;align-items:center;justify-content:center;font-weight:700;">' + kamInitials + '</span>' + kamShort + '</span></td>' +
-                    '<td><span class="text-xs text-slate-700 font-medium">' + subject + '</span></td>' +
-                    '<td><span class="mf-status-badge ' + statusClass + '">' + statusIcon + statusText + '</span></td>' +
-                    '<td><span class="text-xs text-slate-500">' + solvedDateStr + '</span></td>' +
-                    '<td><span class="mf-gap ' + gapClass + '">' + gap + '</span></td>' +
-                '</tr>';
-            }).join('');
-
-            tbody.innerHTML = bodyHTML;
-            document.getElementById('mfShowingText').textContent = 'Showing ' + (start + 1) + '-' + end + ' of ' + mfFilteredData.length + ' mails';
-
-            const totalPages = Math.ceil(mfFilteredData.length / MF_PAGE_SIZE);
-            let pagHTML = '';
-            if (totalPages > 1) {
-                pagHTML += '<button onclick="changeMFPage(' + (mfCurrentPage - 1) + ')" ' + (mfCurrentPage === 1 ? 'disabled' : '') + ' class="mf-pagination-btn" style="' + (mfCurrentPage === 1 ? 'opacity:0.4;cursor:not-allowed;' : '') + '">Prev</button>';
-                for (let i = 1; i <= totalPages; i++) {
-                    if (i === 1 || i === totalPages || (i >= mfCurrentPage - 1 && i <= mfCurrentPage + 1)) {
-                        pagHTML += '<button onclick="changeMFPage(' + i + ')" class="mf-pagination-btn ' + (i === mfCurrentPage ? 'active' : '') + '">' + i + '</button>';
-                    } else if (i === mfCurrentPage - 2 || i === mfCurrentPage + 2) {
-                        pagHTML += '<span class="px-2 text-xs text-slate-400">...</span>';
-                    }
-                }
-                pagHTML += '<button onclick="changeMFPage(' + (mfCurrentPage + 1) + ')" ' + (mfCurrentPage === totalPages ? 'disabled' : '') + ' class="mf-pagination-btn" style="' + (mfCurrentPage === totalPages ? 'opacity:0.4;cursor:not-allowed;' : '') + '">Next</button>';
-            }
-            document.getElementById('mfPagination').innerHTML = pagHTML;
         }
 
-        function changeMFPage(page) {
-            const totalPages = Math.ceil(mfFilteredData.length / MF_PAGE_SIZE);
-            if (page < 1 || page > totalPages) return;
-            mfCurrentPage = page;
-            renderMFTable();
+        function exportCSV() {
+            let csvContent = "data:text/csv;charset=utf-8,";
+            csvContent += "Ticket ID,Date,Time,Merchant,Consignment,Tag,Status,Details,Remarks\n";
+            issuesData.forEach(row => {
+                const details = (row.details || '').replace(/"/g, '""');
+                const remarks = (row.remarks || '').replace(/"/g, '""');
+                csvContent += `${row.ticketId},${row.date},${row.timestamp},${row.merchant},${row.consignmentId},${row.issueTag},${getStatus(row)},"${details}","${remarks}"\n`;
+            });
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "carrybee_issues.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            showToast('CSV exported successfully!', 'success');
         }
 
-        // ===================== INIT =====================
-        initTheme();
-        if (!checkAuth()) {
-            document.getElementById('authUser').focus();
+        function showToast(message, type) {
+            const toast = document.createElement('div');
+            const bgColor = type === 'success' ? 'bg-green-500' : 'bg-red-500';
+            const icon = type === 'success' ? 'fa-check' : 'fa-exclamation-circle';
+            toast.className = `fixed bottom-4 right-4 ${bgColor} text-white px-4 py-3 rounded-lg shadow-lg text-sm font-medium toast z-50 flex items-center gap-2`;
+            toast.innerHTML = `<i class="fa-solid ${icon}"></i> ${message}`;
+            document.body.appendChild(toast);
+            setTimeout(() => { toast.style.opacity = '0'; toast.style.transform = 'translateX(100%)'; setTimeout(() => toast.remove(), 300); }, 3000);
         }
+
+        window.addEventListener('DOMContentLoaded', () => { fetchData(); });
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') { closeModal(); closeRaiseIssue(); }
+            if (e.ctrlKey && e.key === 'r') { e.preventDefault(); fetchData(); }
+        });
     </script>
 </body>
 </html>
