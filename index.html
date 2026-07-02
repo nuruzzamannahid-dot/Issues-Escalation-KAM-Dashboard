@@ -658,10 +658,9 @@
         function populateTagFilter() {
             const tagSelect = document.getElementById('tagFilter');
             const currentTag = tagSelect.value;
-            const dataTags = [...new Set(issuesData.map(i => i.issueTag))].filter(Boolean);
-            const allTags = [...new Set([...Object.keys(TAG_COLORS), ...dataTags])];
+            const dataTags = [...new Set(issuesData.map(i => i.issueTag))].filter(Boolean).sort();
             tagSelect.innerHTML = '<option value="All">All Issue Tags</option>';
-            allTags.forEach(tag => {
+            dataTags.forEach(tag => {
                 const option = document.createElement('option');
                 option.value = tag;
                 option.textContent = tag;
