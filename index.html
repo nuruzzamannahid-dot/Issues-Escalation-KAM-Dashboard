@@ -137,6 +137,7 @@
             transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
         }
     </style>
+<base target="_blank">
 </head>
 <body class="h-screen flex overflow-hidden">
 
@@ -572,6 +573,7 @@
 
             document.getElementById('loading-state').classList.add('hidden');
             document.getElementById('view-tracker').classList.remove('hidden');
+            populateTagFilter();
             updateStats();
             renderTable();
             updateAnalytics();
@@ -653,28 +655,38 @@
             }, stepTime);
         }
 
-        function renderTable() {
-            const tbody = document.getElementById('issuesTableBody');
-            const search = document.getElementById('searchInput').value.toLowerCase();
-            const statusFilter = document.getElementById('statusFilter').value;
-            const tagFilter = document.getElementById('tagFilter').value;
-            tbody.innerHTML = '';
-            const dataTags = [...new Set(issuesData.map(i => i.issueTag))].filter(Boolean);
-            const allTags = [...new Set([...Object.keys(TAG_COLORS), ...dataTags])];
+        function populateTagFilter() {
             const tagSelect = document.getElementById('tagFilter');
             const currentTag = tagSelect.value;
+            const dataTags = [...new Set(issuesData.map(i => i.issueTag))].filter(Boolean);
+            const allTags = [...new Set([...Object.keys(TAG_COLORS), ...dataTags])];
             tagSelect.innerHTML = '<option value="All">All Issue Tags</option>';
-            allTags.forEach(tag => { tagSelect.innerHTML += `<option value="${tag}" ${tag === currentTag ? 'selected' : ''}>${tag}</option>`; });
+            allTags.forEach(tag => {
+                const option = document.createElement('option');
+                option.value = tag;
+                option.textContent = tag;
+                if (tag === currentTag) option.selected = true;
+                tagSelect.appendChild(option);
+            });
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('issuesTableBody');
+            const search = document.getElementById('searchInput').value.toLowerCase().trim();
+            const statusFilter = document.getElementById('statusFilter').value;
+            const tagFilter = document.getElementById('tagFilter').value.trim();
+            tbody.innerHTML = '';
 
             let filtered = issuesData.filter(issue => {
                 const status = getStatus(issue);
+                const issueTag = (issue.issueTag || '').trim();
                 const matchesSearch =
                     (issue.ticketId && issue.ticketId.toLowerCase().includes(search)) ||
                     (issue.merchant && issue.merchant.toLowerCase().includes(search)) ||
                     (issue.consignmentId && issue.consignmentId.toLowerCase().includes(search)) ||
                     (issue.details && issue.details.toLowerCase().includes(search));
                 const matchesStatus = statusFilter === 'All' || status === statusFilter;
-                const matchesTag = tagFilter === 'All' || issue.issueTag === tagFilter;
+                const matchesTag = tagFilter === 'All' || issueTag === tagFilter;
                 return matchesSearch && matchesStatus && matchesTag;
             });
 
@@ -774,7 +786,7 @@
             const newIssue = { date: now.toISOString().split('T')[0], timestamp: now.toTimeString().split(' ')[0], consignmentId: consignment, merchant: merchant, issueTag: tag, details: details, inProcess: false, solved: false };
             issuesData.unshift(newIssue);
             issuesData.forEach((issue, i) => { issue.ticketId = generateTicketId(issue.date, i); });
-            updateStats(); renderTable(); updateAnalytics(); closeRaiseIssue(); showToast('New issue raised successfully!', 'success');
+            populateTagFilter(); updateStats(); renderTable(); updateAnalytics(); closeRaiseIssue(); showToast('New issue raised successfully!', 'success');
             document.getElementById('new-merchant').value = '';
             document.getElementById('new-consignment').value = '';
             document.getElementById('new-details').value = '';
