@@ -25,7 +25,6 @@
         :root {
             --cb-yellow: #FFCC00;
             --cb-black: #333132;
-            /* LIGHT MODE (default) */
             --bg-body: #f3f4f6;
             --bg-sidebar: #ffffff;
             --bg-header: rgba(255,255,255,0.8);
@@ -132,12 +131,10 @@
             transition: all 0.2s; flex-shrink: 0;
         }
         .theme-toggle:hover { background: var(--cb-yellow); color: var(--cb-black); border-color: var(--cb-yellow); }
-        /* Smooth transitions for all themed elements */
         .theme-transition {
             transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
         }
     </style>
-<base target="_blank">
 </head>
 <body class="h-screen flex overflow-hidden">
 
@@ -472,7 +469,6 @@
             document.documentElement.setAttribute('data-theme', currentTheme);
             localStorage.setItem('carrybee-theme', currentTheme);
             updateThemeIcon();
-            // Re-render charts to update colors
             setTimeout(() => {
                 Object.values(charts).forEach(c => { if(c) { c.destroy(); } });
                 charts = {};
@@ -539,6 +535,22 @@
 
         function getTagColor(tag) {
             return TAG_COLORS[tag] || 'bg-gray-200 text-gray-600 border-gray-300';
+        }
+
+        // NEW: Separate function to populate tag filter dropdown
+        function populateTagFilter() {
+            const tagSelect = document.getElementById('tagFilter');
+            const currentTag = tagSelect.value;
+            const dataTags = [...new Set(issuesData.map(i => i.issueTag))].filter(Boolean).sort();
+            const allTags = [...new Set([...Object.keys(TAG_COLORS), ...dataTags])].sort();
+            tagSelect.innerHTML = '<option value="All">All Issue Tags</option>';
+            allTags.forEach(tag => {
+                const option = document.createElement('option');
+                option.value = tag;
+                option.textContent = tag;
+                if (tag === currentTag) option.selected = true;
+                tagSelect.appendChild(option);
+            });
         }
 
         async function fetchData() {
@@ -655,20 +667,7 @@
             }, stepTime);
         }
 
-        function populateTagFilter() {
-            const tagSelect = document.getElementById('tagFilter');
-            const currentTag = tagSelect.value;
-            const dataTags = [...new Set(issuesData.map(i => i.issueTag))].filter(Boolean).sort();
-            tagSelect.innerHTML = '<option value="All">All Issue Tags</option>';
-            dataTags.forEach(tag => {
-                const option = document.createElement('option');
-                option.value = tag;
-                option.textContent = tag;
-                if (tag === currentTag) option.selected = true;
-                tagSelect.appendChild(option);
-            });
-        }
-
+        // FIXED: No longer rebuilds dropdown — only filters and renders rows
         function renderTable() {
             const tbody = document.getElementById('issuesTableBody');
             const search = document.getElementById('searchInput').value.toLowerCase().trim();
