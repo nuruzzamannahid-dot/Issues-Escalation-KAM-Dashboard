@@ -1179,21 +1179,28 @@ async function fetchData() {
     refreshIcon.classList.remove('fa-spin');
 }
 
+function localDateKey(dateInput) {
+    const d = new Date(dateInput);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+}
+
 function updateResponseStats() {
     const responded = issuesData.filter(i => i.respondedBy);
     const total = responded.length;
-    const todayStr = new Date().toDateString();
-    const today = responded.filter(i => i.respondedAt && new Date(i.respondedAt).toDateString() === todayStr).length;
+    const todayKey = localDateKey(new Date());
+    const today = responded.filter(i => i.respondedAt && localDateKey(i.respondedAt) === todayKey).length;
 
     document.getElementById('stat-responded-total').innerText = total;
     document.getElementById('stat-responded-today').innerText = today;
 
-    // Group by day (YYYY-MM-DD), most recent first
+    // Group by local calendar day, most recent first
     const byDay = {};
     responded.forEach(issue => {
         if (!issue.respondedAt) return;
-        const d = new Date(issue.respondedAt);
-        const key = d.toISOString().slice(0, 10);
+        const key = localDateKey(issue.respondedAt);
         byDay[key] = (byDay[key] || 0) + 1;
     });
     const days = Object.keys(byDay).sort((a, b) => b.localeCompare(a));
@@ -1207,7 +1214,7 @@ function updateResponseStats() {
     container.innerHTML = days.map(day => {
         const label = new Date(day + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
         const count = byDay[day];
-        const isToday = day === new Date().toISOString().slice(0, 10);
+        const isToday = day === todayKey;
         return `
             <div class="flex items-center justify-between px-3 py-2 rounded-lg theme-transition" style="background-color: var(--bg-input);">
                 <span class="text-xs font-medium theme-transition" style="color: var(--text-primary);">
@@ -1224,7 +1231,7 @@ function updateResponseStats() {
         if (!name) return;
         if (!byPerson[name]) byPerson[name] = { total: 0, today: 0 };
         byPerson[name].total += 1;
-        if (issue.respondedAt && new Date(issue.respondedAt).toDateString() === todayStr) {
+        if (issue.respondedAt && localDateKey(issue.respondedAt) === todayKey) {
             byPerson[name].today += 1;
         }
     });
