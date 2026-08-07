@@ -122,7 +122,10 @@ body {
 .toast { animation: slideIn 0.3s ease-out; }
 @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
 .details-cell { max-width: 350px; min-width: 200px; }
-.details-preview { line-height: 1.5; word-break: break-word; white-space: normal; }
+.details-preview {
+    line-height: 1.5; word-break: break-word; white-space: normal;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
 .logo-img { height: 28px; width: auto; max-width: 140px; object-fit: contain; }
 .theme-toggle {
     width: 36px; height: 36px; border-radius: 10px;
@@ -134,6 +137,25 @@ body {
 .theme-toggle:hover { background: var(--cb-yellow); color: var(--cb-black); border-color: var(--cb-yellow); }
 .theme-transition {
     transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+}
+.offline-banner {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    background: rgba(239,68,68,0.08);
+    border: 1px solid rgba(239,68,68,0.25);
+    color: #ef4444;
+}
+.offline-banner.hidden { display: none; }
+
+/* Keyboard focus visibility — the gold ring replaces the none-outlines many controls set via Tailwind */
+a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, [tabindex]:focus-visible {
+    outline: 2px solid var(--cb-yellow) !important;
+    outline-offset: 2px !important;
+    border-radius: 6px;
 }
 
 /* ========== LOGIN SCREEN ========== */
@@ -489,8 +511,11 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .login-card-wrap, .light-cone, .lamp-bulb-glow, .lamp-shade::after, .pull-string, .pull-knob {
-        transition: none !important;
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
     }
 }
 @media (max-width: 760px) {
@@ -556,8 +581,8 @@ body {
 <div id="dashboard" class="flex w-full h-full" style="display:none;">
     <aside class="w-64 theme-transition border-r flex flex-col flex-shrink-0" style="background-color: var(--bg-sidebar); border-color: var(--border-color);">
         <div class="p-5 flex items-center justify-between gap-3">
-            <img src="carrybee-logo.png" alt="CarryBee" class="logo-img">
-            <button onclick="toggleTheme()" class="theme-toggle" title="Toggle Dark Mode">
+            <img src="carrybee-logo.png" alt="CarryBee" class="logo-img" onerror="this.onerror=null;this.src='data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20width=%27140%27%20height=%2728%27%3E%3Crect%20width=%27140%27%20height=%2728%27%20rx=%276%27%20fill=%27%23FFCC00%27/%3E%3Ctext%20x=%2770%27%20y=%2719%27%20font-family=%27Arial%27%20font-size=%2714%27%20font-weight=%27bold%27%20fill=%27%23333132%27%20text-anchor=%27middle%27%3ECB%3C/text%3E%3C/svg%3E';">
+            <button onclick="toggleTheme()" class="theme-toggle" title="Toggle Dark Mode" aria-label="Toggle Dark Mode">
                 <i class="fa-solid fa-moon" id="theme-icon"></i>
             </button>
         </div>
@@ -580,8 +605,8 @@ body {
             <div class="glass-panel rounded-lg p-3">
                 <p class="text-xs mb-1" style="color: var(--text-muted);">Data Source</p>
                 <div class="flex items-center gap-2 text-xs" style="color: var(--text-secondary);">
-                    <i class="fa-brands fa-google-drive text-green-500"></i>
-                    <span class="truncate">Google Sheets</span>
+                    <i class="fa-solid fa-database text-gold"></i>
+                    <span class="truncate">CarryBee Database</span>
                 </div>
             </div>
         </div>
@@ -621,9 +646,13 @@ body {
         <div class="flex-1 overflow-y-auto p-8 relative" id="main-content">
             <div id="loading-state" class="absolute inset-0 flex flex-col items-center justify-center z-20 theme-transition" style="background-color: var(--bg-body);">
                 <div class="loading-spinner mb-4"></div>
-                <p class="text-sm theme-transition" style="color: var(--text-muted);">Loading data from Google Sheets...</p>
+                <p class="text-sm theme-transition" style="color: var(--text-muted);">Loading your issues...</p>
             </div>
             <div id="view-tracker" class="hidden fade-in space-y-6">
+                <div id="offlineBanner" class="offline-banner hidden">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <span>Server unreachable — showing sample data. Changes won't be saved until the server is back online.</span>
+                </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     <div class="card-gradient p-5 rounded-xl border relative overflow-hidden group theme-transition" style="border-color: var(--border-color); box-shadow: var(--shadow-sm);">
                         <div class="absolute top-0 right-0 w-24 h-24 rounded-full -mr-8 -mt-8 transition-transform group-hover:scale-110" style="background: var(--border-color);"></div>
@@ -756,7 +785,7 @@ body {
             </div>
             <div id="view-activity" class="hidden fade-in space-y-6">
                 <div class="card-gradient p-5 rounded-xl border relative overflow-hidden theme-transition" style="border-color: var(--border-color); box-shadow: var(--shadow-sm);">
-                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-2">
                         <div>
                             <p class="text-xs font-semibold uppercase tracking-wider theme-transition" style="color: var(--text-muted);">Response Activity</p>
                             <div class="flex items-baseline gap-2 mt-1">
@@ -772,6 +801,9 @@ body {
                             </div>
                         </div>
                     </div>
+                    <p class="text-xs mb-4 theme-transition" style="color: var(--text-muted);">
+                        <i class="fa-solid fa-circle-info mr-1"></i>Response records persist for this session.
+                    </p>
                     <div id="responded-daily-breakdown" class="space-y-2 max-h-56 overflow-y-auto pr-1">
                         <!-- Daily breakdown rows injected by JS -->
                     </div>
@@ -784,31 +816,22 @@ body {
                         <!-- Per-person breakdown rows injected by JS -->
                     </div>
                 </div>
-                <div class="card-gradient p-5 rounded-xl border relative overflow-hidden theme-transition" style="border-color: var(--border-color); box-shadow: var(--shadow-sm);">
-                    <p class="text-xs font-semibold uppercase tracking-wider mb-1 theme-transition" style="color: var(--text-muted);">
-                        <i class="fa-solid fa-chart-simple mr-1"></i> KAM-wise: In Progress vs Resolved
-                    </p>
-                    <p class="text-xs mb-4 theme-transition" style="color: var(--text-muted);">Of the issues each team member has responded to, how many are still being handled vs closed out</p>
-                    <div id="kam-resolution-breakdown" class="space-y-4">
-                        <!-- KAM-wise ratio rows injected by JS -->
-                    </div>
-                </div>
             </div>
         </div>
     </main>
 </div>
 
 <!-- Issue Details Modal -->
-<div id="issueModal" class="fixed inset-0 z-50 hidden">
+<div id="issueModal" class="fixed inset-0 z-50 hidden" role="dialog" aria-modal="true" aria-labelledby="issueModalTitle">
     <div class="modal-overlay absolute inset-0" onclick="closeModal()"></div>
     <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-2xl px-4">
         <div class="rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto theme-transition" style="background-color: var(--bg-modal); border: 1px solid var(--border-color);">
             <div class="p-6 border-b flex justify-between items-start sticky top-0 z-10 theme-transition" style="background-color: var(--bg-modal); border-color: var(--border-color);">
                 <div>
                     <p class="text-gold text-xs font-mono mb-1" id="modal-ticket-id">CB-0000-00000</p>
-                    <h3 class="text-xl font-bold theme-transition" style="color: var(--text-primary);">Issue Details</h3>
+                    <h3 class="text-xl font-bold theme-transition" style="color: var(--text-primary);" id="issueModalTitle">Issue Details</h3>
                 </div>
-                <button onclick="closeModal()" class="theme-transition" style="color: var(--text-muted);">
+                <button onclick="closeModal()" class="theme-transition" style="color: var(--text-muted);" aria-label="Close modal">
                     <i class="fa-solid fa-xmark text-xl"></i>
                 </button>
             </div>
@@ -857,7 +880,7 @@ body {
                     </div>
                     <p class="text-xs mt-3 text-center italic theme-transition" style="color: var(--text-muted);">
                         <i class="fa-solid fa-circle-info mr-1"></i>
-                        Note: Status is derived from your Google Sheet checkboxes.
+                        Status is saved to the CarryBee database.
                     </p>
                 </div>
             </div>
@@ -866,47 +889,49 @@ body {
 </div>
 
 <!-- Raise Issue Modal -->
-<div id="raiseIssueModal" class="fixed inset-0 z-50 hidden">
+<div id="raiseIssueModal" class="fixed inset-0 z-50 hidden" role="dialog" aria-modal="true" aria-labelledby="raiseIssueModalTitle">
     <div class="modal-overlay absolute inset-0" onclick="closeRaiseIssue()"></div>
     <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-lg px-4">
         <div class="rounded-2xl shadow-2xl overflow-hidden theme-transition" style="background-color: var(--bg-modal); border: 1px solid var(--border-color);">
             <div class="p-6 border-b flex justify-between items-center theme-transition" style="border-color: var(--border-color);">
-                <h3 class="text-xl font-bold theme-transition" style="color: var(--text-primary);">Raise New Issue</h3>
-                <button onclick="closeRaiseIssue()" class="theme-transition" style="color: var(--text-muted);">
+                <h3 class="text-xl font-bold theme-transition" style="color: var(--text-primary);" id="raiseIssueModalTitle">Raise New Issue</h3>
+                <button onclick="closeRaiseIssue()" class="theme-transition" style="color: var(--text-muted);" aria-label="Close modal">
                     <i class="fa-solid fa-xmark text-xl"></i>
                 </button>
             </div>
             <div class="p-6 space-y-4">
                 <div>
-                    <label class="block text-xs uppercase font-semibold mb-1 theme-transition" style="color: var(--text-muted);">Merchant Name</label>
+                    <label for="new-merchant" class="block text-xs uppercase font-semibold mb-1 theme-transition" style="color: var(--text-muted);">Merchant Name</label>
                     <input type="text" id="new-merchant" class="w-full rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-gold/50 theme-transition"
-                        style="background-color: var(--bg-modal-content); color: var(--text-primary); border: 1px solid var(--border-input);" placeholder="Enter merchant name">
+                        style="background-color: var(--bg-modal-content); color: var(--text-primary); border: 1px solid var(--border-input);" placeholder="Enter merchant name" maxlength="100">
                 </div>
                 <div>
-                    <label class="block text-xs uppercase font-semibold mb-1 theme-transition" style="color: var(--text-muted);">Consignment ID</label>
+                    <label for="new-consignment" class="block text-xs uppercase font-semibold mb-1 theme-transition" style="color: var(--text-muted);">Consignment ID</label>
                     <input type="text" id="new-consignment" class="w-full rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-gold/50 theme-transition"
-                        style="background-color: var(--bg-modal-content); color: var(--text-primary); border: 1px solid var(--border-input);" placeholder="Enter consignment ID">
+                        style="background-color: var(--bg-modal-content); color: var(--text-primary); border: 1px solid var(--border-input);" placeholder="Enter consignment ID" maxlength="50">
                 </div>
                 <div>
-                    <label class="block text-xs uppercase font-semibold mb-1 theme-transition" style="color: var(--text-muted);">Issue Tag</label>
+                    <label for="new-tag" class="block text-xs uppercase font-semibold mb-1 theme-transition" style="color: var(--text-muted);">Issue Tag</label>
                     <select id="new-tag" class="w-full rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-gold/50 theme-transition"
                         style="background-color: var(--bg-modal-content); color: var(--text-primary); border: 1px solid var(--border-input);">
-                        <option value="Delivery delay">Delivery delay</option>
-                        <option value="pickup missed">pickup missed</option>
-                        <option value="Urgent delivery">Urgent delivery</option>
-                        <option value="Fake hold">Fake hold</option>
-                        <option value="Fake return">Fake return</option>
-                        <option value="COD update request">COD update request</option>
+                        <option value="" disabled selected>Select issue category</option>
+                        <option value="Delivery Delay">Delivery Delay</option>
+                        <option value="Pickup Missed">Pickup Missed</option>
+                        <option value="Urgent Delivery">Urgent Delivery</option>
+                        <option value="Fake Hold">Fake Hold</option>
+                        <option value="Fake Return">Fake Return</option>
+                        <option value="COD Update Request">COD Update Request</option>
                         <option value="Address Change">Address Change</option>
                         <option value="Phone Number Change">Phone Number Change</option>
-                        <option value="Wrong COD/Delivery charge Collection">Wrong COD/Delivery charge Collection</option>
+                        <option value="Wrong COD/Delivery Charge Collection">Wrong COD/Delivery Charge Collection</option>
                         <option value="Rider Misbehave">Rider Misbehave</option>
+                        <option value="Other">Other</option>
                     </select>
                 </div>
                 <div>
-                    <label class="block text-xs uppercase font-semibold mb-1 theme-transition" style="color: var(--text-muted);">Issue Details</label>
+                    <label for="new-details" class="block text-xs uppercase font-semibold mb-1 theme-transition" style="color: var(--text-muted);">Issue Details</label>
                     <textarea id="new-details" rows="4" class="w-full rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-gold/50 resize-none theme-transition"
-                        style="background-color: var(--bg-modal-content); color: var(--text-primary); border: 1px solid var(--border-input);" placeholder="Describe the issue in detail..."></textarea>
+                        style="background-color: var(--bg-modal-content); color: var(--text-primary); border: 1px solid var(--border-input);" placeholder="Describe the issue in detail..." maxlength="2000"></textarea>
                 </div>
                 <button onclick="submitNewIssue()" class="w-full py-2.5 rounded-lg bg-gold hover:opacity-90 text-sm font-bold transition-colors" style="color: var(--cb-black);">
                     Submit Issue
@@ -1097,7 +1122,15 @@ function updateThemeIcon() {
 // ==================== CONFIGURATION ====================
 // Your CarryBee backend (Express + Turso). Change this to your deployed Render URL.
 const API_BASE_URL = 'https://merchant-issues-escalation-databash.onrender.com';
-const WRITE_MODE = true;
+
+// ==================== HELPERS ====================
+function escapeHTML(s) {
+    return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+function normalizeTag(t) {
+    return String(t || '').trim().toLowerCase();
+}
 
 const TAG_COLORS = {
     'Delivery delay': 'bg-yellow-500/10 text-yellow-600 border-yellow-500/20',
@@ -1125,16 +1158,25 @@ const TAG_CHART_COLORS = {
     'Rider Misbehave': '#10b981'
 };
 
+// Case-insensitive tag lookup + canonical labels, so issues submitted through the
+// form ("Delivery Delay") and older rows ("Delivery delay") render identically.
+const TAG_LOOKUP = {};
+Object.entries(TAG_COLORS).forEach(([k, v]) => { TAG_LOOKUP[normalizeTag(k)] = { label: k, color: v }; });
+Object.entries(TAG_CHART_COLORS).forEach(([k, v]) => { if (TAG_LOOKUP[normalizeTag(k)]) TAG_LOOKUP[normalizeTag(k)].chart = v; });
+
+function getTagColor(tag) {
+    const entry = TAG_LOOKUP[normalizeTag(tag)];
+    return (entry && entry.color) || 'bg-gray-200 text-gray-600 border-gray-300';
+}
+
 let issuesData = [];
 let currentModalIssue = null;
 let charts = {};
 
-function generateTicketId(date, index) {
-    const d = new Date(date);
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `CB-${month}${day}-${String(index + 1).padStart(5, '0')}`;
-}
+// Responded By / Activity tracking, kept for the current session. The backend does
+// not persist these yet, so this map is overlaid onto each fetch so a refresh
+// doesn't wipe the records mid-session. (Server-side persistence is a follow-up.)
+const sessionResponses = new Map();
 
 function getStatus(issue) {
     const solved = issue.solved === true || issue.solved === 'TRUE' || issue.solved === 'true' || issue.solved === 'Yes' || issue.solved === 'yes';
@@ -1144,11 +1186,11 @@ function getStatus(issue) {
     return 'Open';
 }
 
-function getTagColor(tag) {
-    return TAG_COLORS[tag] || 'bg-gray-200 text-gray-600 border-gray-300';
+function showOfflineBanner(show) {
+    document.getElementById('offlineBanner').classList.toggle('hidden', !show);
 }
 
-async function fetchData() {
+async function fetchData(silent = false) {
     const refreshIcon = document.getElementById('refresh-icon');
     refreshIcon.classList.add('fa-spin');
     document.getElementById('loading-state').classList.remove('hidden');
@@ -1157,10 +1199,14 @@ async function fetchData() {
         const response = await fetch(`${API_BASE_URL}/api/issues`);
         if (!response.ok) throw new Error('Network response was not ok');
         issuesData = await response.json();
-        showToast('Data loaded successfully!', 'success');
+        showOfflineBanner(false);
+        // Auto-refresh and tab-return calls pass silent=true so the countdown
+        // tick doesn't spam a success toast every 15 minutes.
+        if (!silent) showToast('Data loaded successfully!', 'success');
     } catch (e) {
         console.error('Fetch error:', e);
-        showToast('Failed to load from server. Using demo data.', 'error');
+        showOfflineBanner(true);
+        showToast("Server unreachable — showing sample data. Changes won't be saved.", 'error');
         issuesData = [
             { date: '2026-06-29', timestamp: '9:21:40', consignmentId: 'F06289AV8CW', merchant: 'Paperfly', issueTag: 'Delivery delay', details: 'test test test testtest test test testtest test test testtest test test test', inProcess: false, solved: false },
             { date: '2026-06-29', timestamp: '12:41:08', consignmentId: 'F0627SXWXUE', merchant: 'Sumaiya Hair Tonic', issueTag: 'pickup missed', details: 'Ei parcel ajker modhe delivery lagbe', inProcess: true, solved: false },
@@ -1173,8 +1219,12 @@ async function fetchData() {
             { date: '2026-06-25', timestamp: '11:00:00', consignmentId: 'CB-2024-00215', merchant: 'Maa Kitchen', issueTag: 'Phone Number Change', details: 'Rider did not show up for scheduled pick up at 2 PM. Merchant waited for 1 hour. Need reschedule.', inProcess: false, solved: false },
             { date: '2026-06-25', timestamp: '13:45:00', consignmentId: 'CB-2024-00220', merchant: 'Dhaka Fashion House', issueTag: 'Wrong COD/Delivery charge Collection', details: 'Box was torn and item is missing. Customer received empty package. Very urgent complaint.', inProcess: false, solved: true }
         ];
-        issuesData.forEach((issue, i) => { issue.id = i + 1; issue.ticketId = generateTicketId(issue.date, i); });
+        // Demo rows must never collide with real row IDs — otherwise a status
+        // update on a sample row could silently edit a real issue.
+        issuesData.forEach((issue, i) => { issue.id = null; issue.demo = true; issue.ticketId = `DEMO-${i + 1}`; });
     }
+
+    applySessionResponses();
 
     document.getElementById('loading-state').classList.add('hidden');
     document.getElementById('view-tracker').classList.remove('hidden');
@@ -1186,28 +1236,34 @@ async function fetchData() {
     refreshIcon.classList.remove('fa-spin');
 }
 
-function localDateKey(dateInput) {
-    const d = new Date(dateInput);
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${y}-${m}-${day}`;
+// Overlay the in-session response records (Responded By / Activity) onto the
+// freshly fetched data so a refresh doesn't discard them.
+function applySessionResponses() {
+    issuesData.forEach(issue => {
+        if (!issue || issue.id == null) return;
+        const rec = sessionResponses.get(issue.id);
+        if (rec) {
+            issue.respondedBy = rec.respondedBy;
+            issue.respondedAt = rec.respondedAt;
+        }
+    });
 }
 
 function updateResponseStats() {
     const responded = issuesData.filter(i => i.respondedBy);
     const total = responded.length;
-    const todayKey = localDateKey(new Date());
-    const today = responded.filter(i => i.respondedAt && localDateKey(i.respondedAt) === todayKey).length;
+    const todayStr = new Date().toDateString();
+    const today = responded.filter(i => i.respondedAt && new Date(i.respondedAt).toDateString() === todayStr).length;
 
     document.getElementById('stat-responded-total').innerText = total;
     document.getElementById('stat-responded-today').innerText = today;
 
-    // Group by local calendar day, most recent first
+    // Group by day (YYYY-MM-DD), most recent first
     const byDay = {};
     responded.forEach(issue => {
         if (!issue.respondedAt) return;
-        const key = localDateKey(issue.respondedAt);
+        const d = new Date(issue.respondedAt);
+        const key = d.toISOString().slice(0, 10);
         byDay[key] = (byDay[key] || 0) + 1;
     });
     const days = Object.keys(byDay).sort((a, b) => b.localeCompare(a));
@@ -1221,11 +1277,11 @@ function updateResponseStats() {
     container.innerHTML = days.map(day => {
         const label = new Date(day + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
         const count = byDay[day];
-        const isToday = day === todayKey;
+        const isToday = day === new Date().toISOString().slice(0, 10);
         return `
             <div class="flex items-center justify-between px-3 py-2 rounded-lg theme-transition" style="background-color: var(--bg-input);">
                 <span class="text-xs font-medium theme-transition" style="color: var(--text-primary);">
-                    ${label}${isToday ? ' <span class="text-gold">(Today)</span>' : ''}
+                    ${escapeHTML(label)}${isToday ? ' <span class="text-gold">(Today)</span>' : ''}
                 </span>
                 <span class="text-xs font-bold px-2 py-0.5 rounded-full" style="background: rgba(255,204,0,0.15); color: var(--gold, #ffcc00);">${count} responded</span>
             </div>`;
@@ -1238,15 +1294,13 @@ function updateResponseStats() {
         if (!name) return;
         if (!byPerson[name]) byPerson[name] = { total: 0, today: 0 };
         byPerson[name].total += 1;
-        if (issue.respondedAt && localDateKey(issue.respondedAt) === todayKey) {
+        if (issue.respondedAt && new Date(issue.respondedAt).toDateString() === todayStr) {
             byPerson[name].today += 1;
         }
     });
     const people = Object.keys(byPerson).sort((a, b) => byPerson[b].total - byPerson[a].total);
-    const kamContainer = document.getElementById('kam-resolution-breakdown');
     if (people.length === 0) {
         personContainer.innerHTML = `<p class="text-xs theme-transition" style="color: var(--text-muted);">No responses recorded yet.</p>`;
-        kamContainer.innerHTML = `<p class="text-xs theme-transition" style="color: var(--text-muted);">No responses recorded yet.</p>`;
         return;
     }
     personContainer.innerHTML = people.map(name => {
@@ -1255,8 +1309,8 @@ function updateResponseStats() {
         return `
             <div class="flex items-center justify-between px-3 py-2 rounded-lg theme-transition" style="background-color: var(--bg-input);">
                 <div class="flex items-center gap-2">
-                    <span class="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold" style="background: rgba(255,204,0,0.15); color: var(--gold, #ffcc00);">${initials}</span>
-                    <span class="text-xs font-medium theme-transition" style="color: var(--text-primary);">${name}</span>
+                    <span class="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold" style="background: rgba(255,204,0,0.15); color: var(--gold, #ffcc00);">${escapeHTML(initials)}</span>
+                    <span class="text-xs font-medium theme-transition" style="color: var(--text-primary);">${escapeHTML(name)}</span>
                 </div>
                 <div class="flex items-center gap-2">
                     ${stats.today > 0 ? `<span class="text-[10px] font-semibold px-1.5 py-0.5 rounded-full text-gold" style="background: rgba(255,204,0,0.1);">+${stats.today} today</span>` : ''}
@@ -1264,44 +1318,6 @@ function updateResponseStats() {
                 </div>
             </div>`;
     }).join('');
-
-    // KAM-wise: of issues each person responded to, how many are In Progress vs Resolved
-    const byKam = {};
-    responded.forEach(issue => {
-        const name = (issue.respondedBy || '').trim();
-        if (!name) return;
-        const status = getStatus(issue);
-        if (status !== 'In Progress' && status !== 'Resolved') return; // exclude Open — not yet meaningfully worked
-        if (!byKam[name]) byKam[name] = { inProgress: 0, resolved: 0 };
-        if (status === 'In Progress') byKam[name].inProgress += 1;
-        else byKam[name].resolved += 1;
-    });
-    const kams = Object.keys(byKam).sort((a, b) => (byKam[b].inProgress + byKam[b].resolved) - (byKam[a].inProgress + byKam[a].resolved));
-    if (kams.length === 0) {
-        kamContainer.innerHTML = `<p class="text-xs theme-transition" style="color: var(--text-muted);">No in-progress or resolved issues recorded yet.</p>`;
-        return;
-    }
-    kamContainer.innerHTML = kams.map(name => {
-        const s = byKam[name];
-        const workedTotal = s.inProgress + s.resolved;
-        const resolvedPct = workedTotal ? Math.round((s.resolved / workedTotal) * 100) : 0;
-        const progressPct = 100 - resolvedPct;
-        return `
-            <div>
-                <div class="flex items-center justify-between mb-1.5">
-                    <span class="text-xs font-medium theme-transition" style="color: var(--text-primary);">${name}</span>
-                    <span class="text-xs font-bold theme-transition" style="color: var(--text-muted);">${resolvedPct}% resolved <span style="opacity:0.6;">(${s.resolved} resolved / ${s.inProgress} in progress)</span></span>
-                </div>
-                <div class="w-full h-2.5 rounded-full overflow-hidden flex" style="background-color: var(--bg-input);">
-                    <div class="h-full transition-all duration-700" style="width: ${resolvedPct}%; background: #22c55e;"></div>
-                    <div class="h-full transition-all duration-700" style="width: ${progressPct}%; background: #3b82f6;"></div>
-                </div>
-            </div>`;
-    }).join('') + `
-        <div class="flex items-center gap-4 pt-1">
-            <span class="flex items-center gap-1.5 text-[11px] theme-transition" style="color: var(--text-muted);"><span class="w-2.5 h-2.5 rounded-full" style="background:#22c55e;"></span>Resolved</span>
-            <span class="flex items-center gap-1.5 text-[11px] theme-transition" style="color: var(--text-muted);"><span class="w-2.5 h-2.5 rounded-full" style="background:#3b82f6;"></span>In Progress</span>
-        </div>`;
 }
 
 function updateStats() {
@@ -1342,10 +1358,19 @@ function renderTable() {
     tbody.innerHTML = '';
     const tagSelect = document.getElementById('tagFilter');
     const currentTag = tagSelect.value;
-    const uniqueTags = [...new Set(issuesData.map(i => (i.issueTag || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+    // Build the tag filter from data, deduplicated case-insensitively so
+    // "Delivery Delay" and "Delivery delay" appear once with a canonical label.
+    const seen = new Map();
+    issuesData.forEach(i => {
+        const t = (i.issueTag || '').trim();
+        if (!t) return;
+        const k = normalizeTag(t);
+        if (!seen.has(k)) seen.set(k, (TAG_LOOKUP[k] && TAG_LOOKUP[k].label) || t);
+    });
+    const uniqueTags = [...seen.values()].sort((a, b) => a.localeCompare(b));
     tagSelect.innerHTML = '<option value="All">All Issue Tags</option>';
     uniqueTags.forEach(tag => {
-        tagSelect.innerHTML += `<option value="${tag}" ${tag === currentTag ? 'selected' : ''}>${tag}</option>`;
+        tagSelect.innerHTML += `<option value="${escapeHTML(tag)}" ${normalizeTag(tag) === normalizeTag(currentTag) ? 'selected' : ''}>${escapeHTML(tag)}</option>`;
     });
 
     let filtered = issuesData.filter(issue => {
@@ -1356,7 +1381,7 @@ function renderTable() {
             (issue.consignmentId && issue.consignmentId.toLowerCase().includes(search)) ||
             (issue.details && issue.details.toLowerCase().includes(search));
         const matchesStatus = statusFilter === 'All' || status === statusFilter;
-        const matchesTag = tagFilter === 'All' || (issue.issueTag || '').trim() === tagFilter;
+        const matchesTag = tagFilter === 'All' || normalizeTag(issue.issueTag) === normalizeTag(tagFilter);
         return matchesSearch && matchesStatus && matchesTag;
     });
 
@@ -1371,15 +1396,18 @@ function renderTable() {
             else if (status === 'In Progress') { statusClass = 'status-progress'; statusDot = 'bg-blue-500'; }
             else if (status === 'Resolved') { statusClass = 'status-resolved'; statusDot = 'bg-green-500'; }
             const detailsText = issue.details || '-';
+            const respondedBy = issue.respondedBy
+                ? `<span class="inline-flex items-center gap-1.5"><i class="fa-solid fa-user-check text-gold"></i> ${escapeHTML(issue.respondedBy)}</span>`
+                : '<span style="color: var(--text-muted);">-</span>';
             const row = `
                 <tr class="hover-row transition-colors border-b last:border-0 theme-transition" style="border-color: var(--border-color);">
-                    <td class="p-4 font-mono text-gold font-medium text-xs">${issue.ticketId || '-'}</td>
-                    <td class="p-4 text-xs theme-transition" style="color: var(--text-muted);">${issue.date}<br><span class="text-xs opacity-70">${issue.timestamp}</span></td>
-                    <td class="p-4 font-medium text-sm theme-transition" style="color: var(--text-primary);">${issue.merchant || '-'}</td>
-                    <td class="p-4 font-mono text-xs theme-transition" style="color: var(--text-muted);">${issue.consignmentId || '-'}</td>
-                    <td class="p-4"><span class="tag-pill border ${getTagColor(issue.issueTag)}">${issue.issueTag || 'General'}</span></td>
+                    <td class="p-4 font-mono text-gold font-medium text-xs">${escapeHTML(issue.ticketId || '-')}</td>
+                    <td class="p-4 text-xs theme-transition" style="color: var(--text-muted);">${escapeHTML(issue.date)}<br><span class="text-xs opacity-70">${escapeHTML(issue.timestamp)}</span></td>
+                    <td class="p-4 font-medium text-sm theme-transition" style="color: var(--text-primary);">${escapeHTML(issue.merchant || '-')}</td>
+                    <td class="p-4 font-mono text-xs theme-transition" style="color: var(--text-muted);">${escapeHTML(issue.consignmentId || '-')}</td>
+                    <td class="p-4"><span class="tag-pill border ${getTagColor(issue.issueTag)}">${escapeHTML(issue.issueTag || 'General')}</span></td>
                     <td class="p-4 details-cell">
-                        <div class="details-preview text-xs theme-transition" style="color: var(--text-muted);">${detailsText}</div>
+                        <div class="details-preview text-xs theme-transition" style="color: var(--text-muted);" title="${escapeHTML(detailsText)}">${escapeHTML(detailsText)}</div>
                     </td>
                     <td class="p-4">
                         <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${statusClass}">
@@ -1387,9 +1415,9 @@ function renderTable() {
                             ${status}
                         </span>
                     </td>
-                    <td class="p-4 text-xs theme-transition" style="color: var(--text-secondary);">${issue.respondedBy ? `<span class="inline-flex items-center gap-1.5"><i class="fa-solid fa-user-check text-gold"></i> ${issue.respondedBy}</span>` : '<span style="color: var(--text-muted);">-</span>'}</td>
+                    <td class="p-4 text-xs theme-transition" style="color: var(--text-secondary);">${respondedBy}</td>
                     <td class="p-4 text-right">
-                        <button onclick="openModal('${issue.ticketId}')" class="text-gold hover:opacity-80 text-xs font-bold uppercase tracking-wider transition-colors">View</button>
+                        <button onclick="openModal('${escapeHTML(issue.ticketId)}')" class="text-gold hover:opacity-80 text-xs font-bold uppercase tracking-wider transition-colors">View</button>
                     </td>
                 </tr>
             `;
@@ -1413,7 +1441,10 @@ function openModal(ticketId) {
     document.getElementById('modal-details').innerText = issue.details || '-';
     document.getElementById('modal-responder').innerText = issue.respondedBy || 'Not yet responded';
     updateModalButtons(issue);
+    lastModalFocus = document.activeElement;
     document.getElementById('issueModal').classList.remove('hidden');
+    const closeBtn = document.querySelector('#issueModal [aria-label="Close modal"]');
+    if (closeBtn) closeBtn.focus();
     loadOpsRemarks(issue.consignmentId);
 }
 
@@ -1460,6 +1491,11 @@ function updateModalButtons(issue) {
 
 function updateStatus(newStatus) {
     if (!currentModalIssue) return;
+    // Demo rows (server unreachable) must not write to the real database.
+    if (currentModalIssue.demo) {
+        showToast("Server offline — status changes aren't saved.", 'error');
+        return;
+    }
     // Optimistic UI update — the database call below confirms it.
     if (newStatus === 'Open') { currentModalIssue.inProcess = false; currentModalIssue.solved = false; }
     else if (newStatus === 'In Progress') { currentModalIssue.inProcess = true; currentModalIssue.solved = false; }
@@ -1467,6 +1503,9 @@ function updateStatus(newStatus) {
     const responderName = currentUser ? currentUser.name : 'Unknown';
     currentModalIssue.respondedBy = responderName;
     currentModalIssue.respondedAt = new Date().toISOString();
+    if (currentModalIssue.id != null) {
+        sessionResponses.set(currentModalIssue.id, { respondedBy: responderName, respondedAt: currentModalIssue.respondedAt });
+    }
     document.getElementById('modal-responder').innerText = responderName;
     updateModalButtons(currentModalIssue);
     updateStats();
@@ -1488,32 +1527,50 @@ async function updateStatusOnServer(issue, newStatus, responderName) {
             throw new Error(err.error || `Server responded ${response.status}`);
         }
         const saved = await response.json();
-        // Sync the authoritative respondedBy/respondedAt from the database
-        // in case the server timestamp differs slightly from our optimistic one.
-        const localIssue = issuesData.find(i => i.id === issue.id);
-        if (localIssue) {
-            localIssue.respondedBy = saved.respondedBy;
-            localIssue.respondedAt = saved.respondedAt;
+        // If the backend already returns respondedBy/respondedAt, adopt the
+        // authoritative values; otherwise keep our session record (the backend
+        // field is a pending server-side change).
+        if (saved.respondedBy !== undefined && saved.respondedAt !== undefined && issue.id != null) {
+            sessionResponses.set(issue.id, { respondedBy: saved.respondedBy, respondedAt: saved.respondedAt });
         }
+        applySessionResponses();
         updateResponseStats();
         showToast(`Status saved: ${newStatus}`, 'success');
     } catch (err) {
         console.error('Update status error:', err);
-        showToast('Failed to save status: ' + err.message, 'error');
+        showToast('Failed to save status. Please try again.', 'error');
         fetchData(); // re-sync with the database since our optimistic update may be wrong
     }
 }
 
-function closeModal() { document.getElementById('issueModal').classList.add('hidden'); currentModalIssue = null; }
-function showRaiseIssue() { document.getElementById('raiseIssueModal').classList.remove('hidden'); }
-function closeRaiseIssue() { document.getElementById('raiseIssueModal').classList.add('hidden'); }
+let lastModalFocus = null;
+let lastRaiseFocus = null;
+
+function closeModal() {
+    document.getElementById('issueModal').classList.add('hidden');
+    currentModalIssue = null;
+    if (lastModalFocus && lastModalFocus.focus) { lastModalFocus.focus(); }
+    lastModalFocus = null;
+}
+function showRaiseIssue() {
+    document.getElementById('raiseIssueModal').classList.remove('hidden');
+    lastRaiseFocus = document.activeElement;
+    const first = document.getElementById('new-merchant');
+    if (first) first.focus();
+}
+function closeRaiseIssue() {
+    document.getElementById('raiseIssueModal').classList.add('hidden');
+    if (lastRaiseFocus && lastRaiseFocus.focus) { lastRaiseFocus.focus(); }
+    lastRaiseFocus = null;
+}
 
 async function submitNewIssue() {
-    const merchant = document.getElementById('new-merchant').value;
-    const consignment = document.getElementById('new-consignment').value;
+    const merchant = document.getElementById('new-merchant').value.trim();
+    const consignment = document.getElementById('new-consignment').value.trim();
     const tag = document.getElementById('new-tag').value;
-    const details = document.getElementById('new-details').value;
-    if (!merchant || !consignment || !details) { showToast('Please fill all fields', 'error'); return; }
+    const details = document.getElementById('new-details').value.trim();
+    if (!merchant || !consignment || !tag) { showToast('Please fill all fields', 'error'); return; }
+    if (details.length < 20) { showToast('Please provide at least 20 characters of details', 'error'); return; }
 
     try {
         const response = await fetch(`${API_BASE_URL}/api/issues`, {
@@ -1529,11 +1586,12 @@ async function submitNewIssue() {
         showToast('New issue raised successfully!', 'success');
         document.getElementById('new-merchant').value = '';
         document.getElementById('new-consignment').value = '';
+        document.getElementById('new-tag').value = '';
         document.getElementById('new-details').value = '';
         fetchData();
     } catch (err) {
         console.error('Create issue error:', err);
-        showToast('Failed to raise issue: ' + err.message, 'error');
+        showToast('Failed to raise issue. Please try again.', 'error');
     }
 }
 
@@ -1549,11 +1607,19 @@ function getChartColors() {
 
 function renderTagChart() {
     const ctx = document.getElementById('tagChart').getContext('2d');
+    // Group case-insensitively so form ("Delivery Delay") and legacy
+    // ("Delivery delay") spellings merge into one bar with a canonical label.
     const tags = {};
-    issuesData.forEach(i => { if (i.issueTag) tags[i.issueTag] = (tags[i.issueTag] || 0) + 1; });
-    const labels = Object.keys(tags);
-    const data = Object.values(tags);
-    const colors = labels.map(tag => TAG_CHART_COLORS[tag] || '#94a3b8');
+    issuesData.forEach(i => {
+        const t = (i.issueTag || '').trim();
+        if (!t) return;
+        const k = normalizeTag(t);
+        if (!tags[k]) tags[k] = { label: (TAG_LOOKUP[k] && TAG_LOOKUP[k].label) || t, count: 0 };
+        tags[k].count += 1;
+    });
+    const labels = Object.values(tags).map(g => g.label);
+    const data = Object.values(tags).map(g => g.count);
+    const colors = Object.keys(tags).map(k => (TAG_LOOKUP[k] && TAG_LOOKUP[k].chart) || '#94a3b8');
     const cc = getChartColors();
     if (charts.tag) charts.tag.destroy();
     charts.tag = new Chart(ctx, {
@@ -1614,7 +1680,7 @@ function renderTopMerchants() {
     sorted.forEach(([name, count]) => {
         container.innerHTML += `
             <div class="flex items-center justify-between p-3 rounded-lg border theme-transition" style="background: var(--bg-modal-content); border-color: var(--border-color);">
-                <span class="text-sm font-medium theme-transition" style="color: var(--text-primary);">${name}</span>
+                <span class="text-sm font-medium theme-transition" style="color: var(--text-primary);">${escapeHTML(name)}</span>
                 <span class="text-xs font-bold text-gold bg-gold/10 px-2 py-1 rounded-full">${count} issue${count > 1 ? 's' : ''}</span>
             </div>
         `;
@@ -1678,15 +1744,30 @@ function showToast(message, type) {
     const bgColor = type === 'success' ? 'bg-green-500' : type === 'warning' ? 'bg-yellow-500' : 'bg-red-500';
     const icon = type === 'success' ? 'fa-check' : type === 'warning' ? 'fa-triangle-exclamation' : 'fa-exclamation-circle';
     toast.className = `fixed bottom-4 right-4 ${bgColor} text-white px-4 py-3 rounded-lg shadow-lg text-sm font-medium toast z-50 flex items-center gap-2`;
-    toast.innerHTML = `<i class="fa-solid ${icon}"></i> ${message}`;
+    toast.setAttribute('role', 'status');
+    toast.setAttribute('aria-live', 'polite');
+    toast.innerHTML = `<i class="fa-solid ${icon}"></i> ${escapeHTML(message)}`;
     document.body.appendChild(toast);
     setTimeout(() => { toast.style.opacity = '0'; toast.style.transform = 'translateX(100%)'; setTimeout(() => toast.remove(), 300); }, 3000);
 }
 
 window.addEventListener('DOMContentLoaded', () => { checkAuth(); });
+
+// Close modals with Escape and keep Tab inside whichever modal is open.
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') { closeModal(); closeRaiseIssue(); }
-    if (e.ctrlKey && e.key === 'r') { e.preventDefault(); fetchData(); }
+    if (e.key === 'Tab') {
+        const modal = ['issueModal', 'raiseIssueModal']
+            .map(id => document.getElementById(id))
+            .find(m => m && !m.classList.contains('hidden'));
+        if (!modal) return;
+        const focusables = modal.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+        if (!focusables.length) return;
+        const first = focusables[0];
+        const last = focusables[focusables.length - 1];
+        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    }
 });
 
 // ==================== AUTO REFRESH (15 MIN) ====================
@@ -1702,9 +1783,8 @@ function startAutoRefresh() {
     if (countdownInterval) clearInterval(countdownInterval);
     autoRefreshInterval = setInterval(() => {
         console.log('[AUTO REFRESH] Fetching fresh data...');
-        fetchData();
+        fetchData(true);
         nextRefreshTime = Date.now() + REFRESH_MS;
-        showToast('Auto-refreshed from database', 'success');
     }, REFRESH_MS);
     countdownInterval = setInterval(updateCountdown, 1000);
     updateCountdown();
@@ -1741,7 +1821,7 @@ document.addEventListener('visibilitychange', () => {
     } else {
         console.log('[AUTO REFRESH] Tab visible - resuming');
         if (nextRefreshTime && Date.now() >= nextRefreshTime) {
-            fetchData();
+            fetchData(true);
             nextRefreshTime = Date.now() + (15 * 60 * 1000);
         }
     }
