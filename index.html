@@ -841,6 +841,13 @@ body {
                         <p class="text-sm leading-relaxed whitespace-pre-wrap break-words font-bangla theme-transition" style="color: var(--text-secondary);" id="modal-details">-</p>
                     </div>
                 </div>
+                <div id="modal-ops-remarks-section" class="hidden">
+                    <p class="text-xs uppercase font-semibold mb-1 theme-transition" style="color: var(--text-muted);">OPS Remarks</p>
+                    <div class="rounded-lg p-4 border min-h-[60px] theme-transition" style="background-color: var(--bg-modal-content); border-color: var(--border-color);">
+                        <p class="text-sm leading-relaxed whitespace-pre-wrap break-words theme-transition" style="color: var(--text-secondary);" id="modal-ops-remarks">-</p>
+                        <p class="text-xs mt-2 theme-transition" style="color: var(--text-muted);" id="modal-ops-kam">-</p>
+                    </div>
+                </div>
                 <div class="pt-2">
                     <p class="text-xs uppercase font-semibold mb-3 theme-transition" style="color: var(--text-muted);">Update Status</p>
                     <div class="flex gap-2">
@@ -1391,6 +1398,8 @@ function renderTable() {
     }
 }
 
+const SHEET_SEARCH_URL = 'https://script.google.com/macros/s/AKfycbxluUMkxZ5HAdh3vtPf3yxZxXvvhbw1rG1wgmkYR8j3MY3NtNrDpsyNNH5OJeMumlhiEA/exec';
+
 function openModal(ticketId) {
     const issue = issuesData.find(i => i.ticketId === ticketId);
     if (!issue) return;
@@ -1405,6 +1414,30 @@ function openModal(ticketId) {
     document.getElementById('modal-responder').innerText = issue.respondedBy || 'Not yet responded';
     updateModalButtons(issue);
     document.getElementById('issueModal').classList.remove('hidden');
+    loadOpsRemarks(issue.consignmentId);
+}
+
+async function loadOpsRemarks(consignmentId) {
+    const section = document.getElementById('modal-ops-remarks-section');
+    const remarksEl = document.getElementById('modal-ops-remarks');
+    const kamEl = document.getElementById('modal-ops-kam');
+    section.classList.add('hidden');
+    if (!consignmentId || !SHEET_SEARCH_URL) return;
+
+    try {
+        const res = await fetch(`${SHEET_SEARCH_URL}?consignmentId=${encodeURIComponent(consignmentId)}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!data.found || !data.matches || data.matches.length === 0) return;
+
+        // If it appears in more than one tab/row, show the most recently added one.
+        const match = data.matches[data.matches.length - 1];
+        remarksEl.innerText = match.opsStatus || 'No remarks yet from OPS.';
+        kamEl.innerText = match.kamName ? `— ${match.kamName} (${match.tab})` : `(${match.tab})`;
+        section.classList.remove('hidden');
+    } catch (e) {
+        console.error('Failed to load OPS remarks:', e);
+    }
 }
 
 function updateModalButtons(issue) {
