@@ -1,0 +1,19 @@
+name: Sync Sheet Status
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'  # every 10 minutes, UTC
+  workflow_dispatch: {}       # lets you trigger it manually from the Actions tab
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Run sync
+        env:
+          SHEET_SEARCH_URL: ${{ secrets.SHEET_SEARCH_URL }}
+        run: node sync-sheet-status.js
