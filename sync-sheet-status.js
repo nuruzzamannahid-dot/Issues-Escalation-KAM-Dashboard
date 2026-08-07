@@ -19,7 +19,7 @@
 
 const API_BASE_URL = 'https://merchant-issues-escalation-databash.onrender.com';
 const SHEET_SEARCH_URL = process.env.SHEET_SEARCH_URL;
-const AUTO_RESPONDER_NAME = 'Auto-Sync (Sheet)';
+const FALLBACK_RESPONDER_NAME = 'CarryBee Ops'; // used only if the sheet row has no KAM Name filled in
 
 async function fetchIssues() {
   const res = await fetch(`${API_BASE_URL}/api/issues`);
@@ -27,11 +27,11 @@ async function fetchIssues() {
   return res.json();
 }
 
-async function patchStatus(issueId, status) {
+async function patchStatus(issueId, status, respondedBy) {
   const res = await fetch(`${API_BASE_URL}/api/issues/${issueId}/status`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ status, respondedBy: AUTO_RESPONDER_NAME }),
+    body: JSON.stringify({ status, respondedBy: respondedBy || FALLBACK_RESPONDER_NAME }),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
@@ -70,16 +70,17 @@ async function main() {
     if (!result.found) continue;
 
     if (status === 'Open') {
-      await patchStatus(issue.id, 'In Progress');
-      console.log(`${issue.id} (${issue.consignmentId}): Open -> In Progress`);
+      const match = result.matches[0];
+      await patchStatus(issue.id, 'In Progress', match.kamName);
+      console.log(`${issue.id} (${issue.consignmentId}): Open -> In Progress (${match.kamName || 'no KAM name in sheet'})`);
       continue;
     }
 
     if (status === 'In Progress') {
       const resolvedMatch = result.matches.find((m) => m.resolved);
       if (resolvedMatch) {
-        await patchStatus(issue.id, 'Resolved');
-        console.log(`${issue.id} (${issue.consignmentId}): In Progress -> Resolved (${resolvedMatch.tab}, "${resolvedMatch.opsStatus}")`);
+        await patchStatus(issue.id, 'Resolved', resolvedMatch.kamName);
+        console.log(`${issue.id} (${issue.consignmentId}): In Progress -> Resolved (${resolvedMatch.kamName || 'no KAM name in sheet'}, "${resolvedMatch.opsStatus}")`);
       }
     }
   }
