@@ -105,6 +105,12 @@ body {
 .status-progress { background: var(--bg-tag-progress); color: #3b82f6; border: 1px solid rgba(59,130,246,0.25); }
 .status-resolved { background: var(--bg-tag-resolved); color: #22c55e; border: 1px solid rgba(34,197,94,0.25); }
 .tag-pill { font-size: 0.7rem; padding: 0.3rem 0.6rem; border-radius: 9999px; font-weight: 500; white-space: nowrap; display: inline-block; }
+/* Theme-aware fallback pill for tags not in the TAG_COLORS map (e.g. "Lost Shipment", "Other"). */
+.tag-fallback {
+    background: var(--bg-table-hover);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-color);
+}
 .sidebar-item { color: var(--text-muted); transition: all 0.2s; }
 .sidebar-item:hover { background: rgba(255,204,0,0.05); color: var(--text-secondary); }
 .sidebar-item.active { background: rgba(255,204,0,0.12); color: var(--cb-yellow); border-right: 3px solid var(--cb-yellow); }
@@ -1166,12 +1172,17 @@ Object.entries(TAG_CHART_COLORS).forEach(([k, v]) => { if (TAG_LOOKUP[normalizeT
 
 function getTagColor(tag) {
     const entry = TAG_LOOKUP[normalizeTag(tag)];
-    return (entry && entry.color) || 'bg-gray-200 text-gray-600 border-gray-300';
+    // Neutral, theme-aware fallback (e.g. "Lost Shipment", "Other") instead of
+    // a hard-coded light background that looks wrong in dark mode.
+    return (entry && entry.color) || 'tag-fallback';
 }
 
 let issuesData = [];
 let currentModalIssue = null;
 let charts = {};
+// Tracks which main view is active, so a background refresh doesn't re-reveal
+// a view the user navigated away from.
+let currentView = 'tracker';
 
 // Responded By / Activity tracking, kept for the current session. The backend does
 // not persist these yet, so this map is overlaid onto each fetch so a refresh
@@ -1227,7 +1238,10 @@ async function fetchData(silent = false) {
     applySessionResponses();
 
     document.getElementById('loading-state').classList.add('hidden');
-    document.getElementById('view-tracker').classList.remove('hidden');
+    // Reveal only the view the user is actually on, so a manual refresh or the
+    // 15-minute auto-refresh while on Analytics/Activity doesn't leak the
+    // tracker back in below it (previously both views rendered stacked).
+    document.getElementById(`view-${currentView}`).classList.remove('hidden');
     updateStats();
     updateResponseStats();
     renderTable();
@@ -1417,7 +1431,7 @@ function renderTable() {
                     </td>
                     <td class="p-4 text-xs theme-transition" style="color: var(--text-secondary);">${respondedBy}</td>
                     <td class="p-4 text-right">
-                        <button onclick="openModal('${escapeHTML(issue.ticketId)}')" class="text-gold hover:opacity-80 text-xs font-bold uppercase tracking-wider transition-colors">View</button>
+                        <button onclick="openModal(this.dataset.ticket)" data-ticket="${escapeHTML(issue.ticketId)}" class="text-gold hover:opacity-80 text-xs font-bold uppercase tracking-wider transition-colors">View</button>
                     </td>
                 </tr>
             `;
@@ -1460,6 +1474,11 @@ async function loadOpsRemarks(consignmentId) {
         if (!res.ok) return;
         const data = await res.json();
         if (!data.found || !data.matches || data.matches.length === 0) return;
+
+        // Guard against a stale response: if the user closed this modal and
+        // opened a different issue before the request resolved, don't paint
+        // this issue's remarks into the wrong modal.
+        if (!currentModalIssue || currentModalIssue.consignmentId !== consignmentId) return;
 
         // If it appears in more than one tab/row, show the most recently added one.
         const match = data.matches[data.matches.length - 1];
@@ -1702,6 +1721,7 @@ function renderResolutionChart() {
 }
 
 function switchView(view) {
+    currentView = view;
     document.getElementById('view-tracker').classList.add('hidden');
     document.getElementById('view-analytics').classList.add('hidden');
     document.getElementById('view-activity').classList.add('hidden');
@@ -1721,21 +1741,28 @@ function switchView(view) {
 }
 
 function exportCSV() {
-    let csvContent = "data:text/csv;charset=utf-8,";
-    csvContent += "Ticket ID,Date,Time,Merchant,Consignment,Tag,Status,Responded By,Details,Remarks\n";
+    // Quote and escape every field so merchant names / details containing
+    // commas, quotes, or newlines don't corrupt the column layout, and prefix
+    // a UTF-8 BOM so Excel opens it with the right encoding.
+    const esc = v => '"' + String(v ?? '').replace(/"/g, '""') + '"';
+    const header = ['Ticket ID', 'Date', 'Time', 'Merchant', 'Consignment', 'Tag', 'Status', 'Responded By', 'Details', 'Remarks'];
+    const lines = [header.join(',')];
     issuesData.forEach(row => {
-        const details = (row.details || '').replace(/"/g, '""');
-        const remarks = (row.remarks || '').replace(/"/g, '""');
-        const respondedBy = (row.respondedBy || '').replace(/"/g, '""');
-        csvContent += `${row.ticketId},${row.date},${row.timestamp},${row.merchant},${row.consignmentId},${row.issueTag},${getStatus(row)},"${respondedBy}","${details}","${remarks}"\n`;
+        const cells = [
+            row.ticketId, row.date, row.timestamp, row.merchant, row.consignmentId,
+            row.issueTag, getStatus(row), row.respondedBy, row.details, row.remarks
+        ];
+        lines.push(cells.map(esc).join(','));
     });
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", "carrybee_issues.csv");
+    const csvContent = '﻿' + lines.join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'carrybee_issues.csv';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(link.href);
     showToast('CSV exported successfully!', 'success');
 }
 
