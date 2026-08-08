@@ -106,7 +106,11 @@ async function main() {
       const match = result.matches[0];
       await patchStatus(issue.id, 'In Progress', match.kamName);
       console.log(`${issue.id} (${issue.consignmentId}): Open -> In Progress (${match.kamName || 'no KAM name in sheet'})`);
-      await notifyOpsRemarks(issue.consignmentId, match.opsStatus);
+      if (match.opsStatus && match.opsStatus.trim().length > 0) {
+        await notifyOpsRemarks(issue.consignmentId, match.opsStatus);
+      } else {
+        console.log(`${issue.id} (${issue.consignmentId}): no OPS remarks text yet — skipping Telegram alert`);
+      }
       continue;
     }
 
