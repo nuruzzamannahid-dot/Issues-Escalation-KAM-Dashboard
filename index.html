@@ -729,6 +729,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
                                     <th class="p-4">Details</th>
                                     <th class="p-4 w-28">Status</th>
                                     <th class="p-4 w-36">Responded By</th>
+                                    <th class="p-4 w-48">OPS Remarks</th>
                                     <th class="p-4 w-20 text-right">Action</th>
                                 </tr>
                             </thead>
@@ -1429,7 +1430,10 @@ function renderTable() {
                             ${status}
                         </span>
                     </td>
-                    <td class="p-4 text-xs theme-transition" style="color: var(--text-secondary);">${respondedBy}</td>
+                    <td class="p-4 text-xs theme-transition" style="color: var(--text-secondary);" id="responded-by-${escapeHTML(issue.ticketId)}">${respondedBy}</td>
+                    <td class="p-4 text-xs theme-transition" style="color: var(--text-secondary);" id="ops-remarks-${escapeHTML(issue.ticketId)}">
+                        <span style="color: var(--text-muted);">${issue.consignmentId ? 'Loading…' : '-'}</span>
+                    </td>
                     <td class="p-4 text-right">
                         <button onclick="openModal(this.dataset.ticket)" data-ticket="${escapeHTML(issue.ticketId)}" class="text-gold hover:opacity-80 text-xs font-bold uppercase tracking-wider transition-colors">View</button>
                     </td>
@@ -1437,6 +1441,7 @@ function renderTable() {
             `;
             tbody.innerHTML += row;
         });
+        loadSheetDataForTable(filtered);
     }
 }
 
@@ -1498,6 +1503,66 @@ async function loadOpsRemarks(consignmentId) {
     } catch (e) {
         console.error('Failed to load OPS remarks:', e);
     }
+}
+
+// Populates the "OPS Remarks" table column and corrects "Responded By" to the
+// real KAM Name from the sheet, for every row currently rendered in the table.
+// Uses a single batch POST request instead of one fetch per row.
+async function loadSheetDataForTable(rows) {
+    if (!SHEET_SEARCH_URL) return;
+
+    const ids = [...new Set(
+        rows.map(issue => (issue.consignmentId || '').trim().toUpperCase()).filter(Boolean)
+    )];
+    if (ids.length === 0) return;
+
+    console.log('[OPS Remarks] batch lookup for', ids.length, 'consignment IDs');
+
+    let data;
+    try {
+        // No Content-Type header on purpose — keeps this a "simple request" so
+        // the browser skips a CORS preflight against the Apps Script endpoint.
+        const res = await fetch(SHEET_SEARCH_URL, {
+            method: 'POST',
+            body: JSON.stringify({ consignmentIds: ids }),
+        });
+        console.log('[OPS Remarks] batch fetch status:', res.status);
+        if (!res.ok) return;
+        data = await res.json();
+        console.log('[OPS Remarks] batch response received for', Object.keys(data.results || {}).length, 'ids');
+    } catch (e) {
+        console.error('[OPS Remarks] batch lookup failed:', e);
+        return;
+    }
+
+    if (!data || !data.results) return;
+
+    rows.forEach(issue => {
+        const cid = (issue.consignmentId || '').trim().toUpperCase();
+        const remarksCell = document.getElementById(`ops-remarks-${issue.ticketId}`);
+        const respondedCell = document.getElementById(`responded-by-${issue.ticketId}`);
+        const result = data.results[cid];
+
+        if (!result || !result.found || result.matches.length === 0) {
+            if (remarksCell) remarksCell.innerHTML = '<span style="color: var(--text-muted);">-</span>';
+            return;
+        }
+
+        // If it appears in more than one tab/row, show the most recently added one.
+        const match = result.matches[result.matches.length - 1];
+
+        if (remarksCell) {
+            const remarksText = match.opsStatus || 'No remarks yet';
+            remarksCell.innerHTML = `<span title="${escapeHTML(remarksText)}">${escapeHTML(remarksText)}</span>`;
+        }
+
+        // Prefer the live KAM name from the sheet over whatever was stored
+        // when the ticket last transitioned status (which may have been
+        // recorded before the sheet row's KAM Name column was filled in).
+        if (respondedCell && match.kamName) {
+            respondedCell.innerHTML = `<span class="inline-flex items-center gap-1.5"><i class="fa-solid fa-user-check text-gold"></i> ${escapeHTML(match.kamName)}</span>`;
+        }
+    });
 }
 
 function updateModalButtons(issue) {
