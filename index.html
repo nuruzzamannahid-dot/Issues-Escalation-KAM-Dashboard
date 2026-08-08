@@ -1441,6 +1441,7 @@ function renderTable() {
 }
 
 const SHEET_SEARCH_URL = 'https://script.google.com/macros/s/AKfycbxluUMkxZ5HAdh3vtPf3yxZxXvvhbw1rG1wgmkYR8j3MY3NtNrDpsyNNH5OJeMumlhiEA/exec';
+console.log('[BUILD] index.html with OPS Remarks feature — build tag 2026-08-08-a');
 
 function openModal(ticketId) {
     const issue = issuesData.find(i => i.ticketId === ticketId);
@@ -1463,17 +1464,26 @@ function openModal(ticketId) {
 }
 
 async function loadOpsRemarks(consignmentId) {
+    console.log('[OPS Remarks] loadOpsRemarks called for', consignmentId);
     const section = document.getElementById('modal-ops-remarks-section');
     const remarksEl = document.getElementById('modal-ops-remarks');
     const kamEl = document.getElementById('modal-ops-kam');
     section.classList.add('hidden');
-    if (!consignmentId || !SHEET_SEARCH_URL) return;
+    if (!consignmentId || !SHEET_SEARCH_URL) {
+        console.log('[OPS Remarks] skipped — missing consignmentId or SHEET_SEARCH_URL');
+        return;
+    }
 
     try {
         const res = await fetch(`${SHEET_SEARCH_URL}?consignmentId=${encodeURIComponent(consignmentId)}`);
+        console.log('[OPS Remarks] fetch status:', res.status);
         if (!res.ok) return;
         const data = await res.json();
-        if (!data.found || !data.matches || data.matches.length === 0) return;
+        console.log('[OPS Remarks] response:', data);
+        if (!data.found || !data.matches || data.matches.length === 0) {
+            console.log('[OPS Remarks] no match found in sheet for', consignmentId);
+            return;
+        }
 
         // Guard against a stale response: if the user closed this modal and
         // opened a different issue before the request resolved, don't paint
