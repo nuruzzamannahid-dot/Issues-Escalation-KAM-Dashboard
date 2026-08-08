@@ -6,6 +6,10 @@
  *   Open        -> In Progress   (once a matching Consignment ID is found in the sheet)
  *   In Progress -> Resolved      (once OPS marks that row resolved in the sheet)
  *
+ * Also sends a Telegram alert (same bot/recipients as the escalation form)
+ * the first time OPS Remarks appear for a ticket — i.e. exactly when it
+ * flips Open -> In Progress.
+ *
  * Matches the real API used by merchants-issues-dashboard.onrender.com:
  *   GET   /api/issues                -> [{ id, consignmentId, merchant, inProcess, solved, ... }]
  *   PATCH /api/issues/:id/status     -> body { status: 'Open'|'In Progress'|'Resolved', respondedBy }
@@ -13,13 +17,42 @@
  * Run on a schedule — e.g. a GitHub Actions workflow every 10-15 min,
  * same pattern as your reminder-bot.js.
  *
- * Env var required:
- *   SHEET_SEARCH_URL   the Apps Script web app URL from sheet-search.gs (ends in /exec)
+ * Env vars:
+ *   SHEET_SEARCH_URL     required — Apps Script web app URL from sheet-search.gs (ends in /exec)
+ *   TELEGRAM_BOT_TOKEN    optional — defaults to the same bot the escalation form uses
+ *   TELEGRAM_CHAT_IDS     optional — comma-separated chat IDs, defaults to Nahid + Ahmed
  */
 
 const API_BASE_URL = 'https://merchant-issues-escalation-databash.onrender.com';
 const SHEET_SEARCH_URL = process.env.SHEET_SEARCH_URL;
 const FALLBACK_RESPONDER_NAME = 'CarryBee Ops'; // used only if the sheet row has no KAM Name filled in
+
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '8669705066:AAHuKUG2-a1DkZ-1tK60aIqp51q_o1K81Oo';
+const TELEGRAM_CHAT_IDS = (process.env.TELEGRAM_CHAT_IDS || '8485545697,8839924588')
+  .split(',')
+  .map((id) => id.trim())
+  .filter(Boolean);
+
+async function sendTelegramMessage(chatId, text) {
+  const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'Markdown' }),
+  });
+  return res.json();
+}
+
+async function notifyOpsRemarks(consignmentId, opsStatus) {
+  const text = `📋 *${consignmentId}* is CID\nOPS REMARKS: ${opsStatus || '(no remarks text)'}`;
+  await Promise.all(
+    TELEGRAM_CHAT_IDS.map((chatId) =>
+      sendTelegramMessage(chatId, text).catch((err) =>
+        console.error(`Telegram send failed for ${chatId}:`, err)
+      )
+    )
+  );
+}
 
 async function fetchIssues() {
   const res = await fetch(`${API_BASE_URL}/api/issues`);
@@ -73,6 +106,7 @@ async function main() {
       const match = result.matches[0];
       await patchStatus(issue.id, 'In Progress', match.kamName);
       console.log(`${issue.id} (${issue.consignmentId}): Open -> In Progress (${match.kamName || 'no KAM name in sheet'})`);
+      await notifyOpsRemarks(issue.consignmentId, match.opsStatus);
       continue;
     }
 
