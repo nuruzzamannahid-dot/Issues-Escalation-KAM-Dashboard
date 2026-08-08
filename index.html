@@ -729,6 +729,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
                                     <th class="p-4">Details</th>
                                     <th class="p-4 w-28">Status</th>
                                     <th class="p-4 w-36">Responded By</th>
+                                    <th class="p-4 w-28">Hub</th>
                                     <th class="p-4 w-48">OPS Remarks</th>
                                     <th class="p-4 w-20 text-right">Action</th>
                                 </tr>
@@ -1431,6 +1432,9 @@ function renderTable() {
                         </span>
                     </td>
                     <td class="p-4 text-xs theme-transition" style="color: var(--text-secondary);" id="responded-by-${escapeHTML(issue.ticketId)}">${respondedBy}</td>
+                    <td class="p-4 text-xs theme-transition" style="color: var(--text-secondary);" id="hub-name-${escapeHTML(issue.ticketId)}">
+                        <span style="color: var(--text-muted);">${issue.consignmentId ? 'Loading…' : '-'}</span>
+                    </td>
                     <td class="p-4 text-xs theme-transition" style="color: var(--text-secondary);" id="ops-remarks-${escapeHTML(issue.ticketId)}">
                         <span style="color: var(--text-muted);">${issue.consignmentId ? 'Loading…' : '-'}</span>
                     </td>
@@ -1498,7 +1502,8 @@ async function loadOpsRemarks(consignmentId) {
         // If it appears in more than one tab/row, show the most recently added one.
         const match = data.matches[data.matches.length - 1];
         remarksEl.innerText = match.opsStatus || 'No remarks yet from OPS.';
-        kamEl.innerText = match.kamName ? `— ${match.kamName} (${match.tab})` : `(${match.tab})`;
+        const hubPart = match.hubName ? `, Hub: ${match.hubName}` : '';
+        kamEl.innerText = match.kamName ? `— ${match.kamName} (${match.tab}${hubPart})` : `(${match.tab}${hubPart})`;
         section.classList.remove('hidden');
     } catch (e) {
         console.error('Failed to load OPS remarks:', e);
@@ -1541,10 +1546,12 @@ async function loadSheetDataForTable(rows) {
         const cid = (issue.consignmentId || '').trim().toUpperCase();
         const remarksCell = document.getElementById(`ops-remarks-${issue.ticketId}`);
         const respondedCell = document.getElementById(`responded-by-${issue.ticketId}`);
+        const hubCell = document.getElementById(`hub-name-${issue.ticketId}`);
         const result = data.results[cid];
 
         if (!result || !result.found || result.matches.length === 0) {
             if (remarksCell) remarksCell.innerHTML = '<span style="color: var(--text-muted);">-</span>';
+            if (hubCell) hubCell.innerHTML = '<span style="color: var(--text-muted);">-</span>';
             return;
         }
 
@@ -1554,6 +1561,12 @@ async function loadSheetDataForTable(rows) {
         if (remarksCell) {
             const remarksText = match.opsStatus || 'No remarks yet';
             remarksCell.innerHTML = `<span title="${escapeHTML(remarksText)}">${escapeHTML(remarksText)}</span>`;
+        }
+
+        if (hubCell) {
+            hubCell.innerHTML = match.hubName
+                ? `<span>${escapeHTML(match.hubName)}</span>`
+                : '<span style="color: var(--text-muted);">-</span>';
         }
 
         // Prefer the live KAM name from the sheet over whatever was stored
