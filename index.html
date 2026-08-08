@@ -2016,7 +2016,13 @@ const DHAKA_AREA_KEYWORDS = [
     'kotwali', 'wari', 'shyampur', 'kadamtali', 'kamrangirchar', 'pallabi', 'cantonment',
     'banani', 'bashundhara', 'turag', 'adabor', 'hazaribagh', 'kafrul', 'khilkhet', 'mugda',
     'paltan', 'ramna', 'shahbagh', 'sutrapur', 'vatara', 'uttarkhan', 'dakshinkhan',
-    'bimanbandar', 'chackbazar', 'gendaria', 'kalabagan', 'shah ali', 'sher-e-bangla'
+    'bimanbandar', 'chackbazar', 'gendaria', 'kalabagan', 'shah ali', 'sher-e-bangla',
+    // Dohar & (Dhaka-district) Nawabganj upazilas, southwest of Dhaka city.
+    // "dohar-nawabganj" is listed explicitly (and is longer than the bare
+    // "nawabganj" district keyword below) so hub names like "Dohar-Nawabganj"
+    // resolve here instead of being swallowed by the Chapainawabganj/Rajshahi
+    // "nawabganj" match, which is a totally different district out west.
+    'dohar-nawabganj', 'dohar'
 ];
 
 // Flat, longest-match-wins keyword list built once from the tables above.
@@ -2133,6 +2139,12 @@ function pinRadius(total) {
     return Math.max(4, Math.min(11, 4 + Math.sqrt(total)));
 }
 
+// Red when a hub has more open/in-progress issues than resolved ones
+// (needs attention), Carrybee yellow otherwise (healthy).
+function pinColor(s) {
+    return s.inProgress > s.resolved ? '#ef4444' : '#F9BC15';
+}
+
 function showHubTooltip(hubName, s, clientX, clientY, wrapEl) {
     const tip = document.getElementById('hubTooltip');
     if (!tip) return;
@@ -2176,6 +2188,7 @@ function renderHubMap() {
         circle.setAttribute('cy', pos.y);
         circle.setAttribute('r', r);
         circle.setAttribute('class', 'hub-pin hub-pin-dot');
+        circle.style.fill = pinColor(s);
         circle.dataset.hub = name;
         circle.addEventListener('mouseenter', (e) => { setActiveHub(name); showHubTooltip(name, s, e.clientX, e.clientY, wrapEl); });
         circle.addEventListener('mousemove', (e) => showHubTooltip(name, s, e.clientX, e.clientY, wrapEl));
