@@ -1125,6 +1125,9 @@ function updateThemeIcon() {
 // ==================== CONFIGURATION ====================
 // Your CarryBee backend (Express + Turso). Change this to your deployed Render URL.
 const API_BASE_URL = 'https://merchant-issues-escalation-databash.onrender.com';
+// Apps Script Web App that looks up Hub / Ops Remarks / KAM Name by Consignment ID
+// across the AD Team sheet's ISD, OSD, and Central tabs.
+const SHEET_LOOKUP_URL = 'https://script.google.com/macros/s/AKfycbxluUMkxZ5HAdh3vtPf3yxZxXvvhbw1rG1wgmkYR8j3MY3NtNrDpsyNNH5OJeMumlhiEA/exec';
 
 // ==================== HELPERS ====================
 function escapeHTML(s) {
@@ -1228,6 +1231,7 @@ async function fetchData(silent = false) {
     }
 
     applySessionResponses();
+    await enrichWithSheetData();
 
     document.getElementById('loading-state').classList.add('hidden');
     document.getElementById('view-tracker').classList.remove('hidden');
@@ -1250,6 +1254,44 @@ function applySessionResponses() {
             issue.respondedAt = rec.respondedAt;
         }
     });
+}
+
+// Batch-looks up Hub / Ops Remarks / KAM Name from the AD Team Google Sheet
+// (via the Apps Script web app), matched by Consignment ID, and merges the
+// result onto each issue. Non-fatal on failure — table still renders with
+// whatever data the main API already provided.
+async function enrichWithSheetData() {
+    const ids = [...new Set(
+        issuesData.map(i => i && i.consignmentId).filter(id => id && String(id).trim())
+    )];
+    if (ids.length === 0) return;
+
+    try {
+        // No Content-Type header on purpose — Apps Script reads the raw body
+        // regardless, and this avoids triggering a CORS preflight request.
+        const response = await fetch(SHEET_LOOKUP_URL, {
+            method: 'POST',
+            body: JSON.stringify({ consignmentIds: ids })
+        });
+        if (!response.ok) throw new Error(`Sheet lookup responded ${response.status}`);
+        const data = await response.json();
+        const results = data.results || {};
+
+        issuesData.forEach(issue => {
+            const key = String(issue.consignmentId || '').trim().toUpperCase();
+            const entry = results[key];
+            if (!entry || !entry.found || !entry.matches || entry.matches.length === 0) return;
+
+            // Prefer a match that actually has an Ops status filled in; fall
+            // back to the first match (e.g. Hub may be filled before Ops acts).
+            const match = entry.matches.find(m => m.opsStatus) || entry.matches[0];
+            if (match.hubName) issue.hub = match.hubName;
+            if (match.opsStatus) issue.remarks = match.opsStatus;
+            if (match.kamName) issue.kamName = match.kamName;
+        });
+    } catch (e) {
+        console.error('Sheet enrichment error:', e);
+    }
 }
 
 function updateResponseStats() {
