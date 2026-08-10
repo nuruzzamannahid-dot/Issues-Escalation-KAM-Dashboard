@@ -726,6 +726,10 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
                         style="background-color: var(--bg-input); color: var(--text-primary); border: 1px solid var(--border-input);">
                         <option value="All">All Issue Tags</option>
                     </select>
+                    <select id="groupFilter" onchange="renderTable()" class="rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-gold/50 cursor-pointer theme-transition"
+                        style="background-color: var(--bg-input); color: var(--text-primary); border: 1px solid var(--border-input);">
+                        <option value="All">All Merchant Groups</option>
+                    </select>
                 </div>
                 <div class="glass-panel rounded-xl overflow-hidden">
                     <div class="overflow-x-auto">
@@ -735,6 +739,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
                                     <th class="p-4 w-32">Ticket ID</th>
                                     <th class="p-4 w-36">Submitted</th>
                                     <th class="p-4 w-40">Merchant</th>
+                                    <th class="p-4 w-28">Group</th>
                                     <th class="p-4 w-36">Consignment</th>
                                     <th class="p-4 w-36">Tag</th>
                                     <th class="p-4">Details</th>
@@ -887,6 +892,10 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
                     <div>
                         <p class="text-xs uppercase font-semibold mb-1 theme-transition" style="color: var(--text-muted);">Merchant</p>
                         <p class="text-sm font-medium theme-transition" style="color: var(--text-primary);" id="modal-merchant">-</p>
+                    </div>
+                    <div>
+                        <p class="text-xs uppercase font-semibold mb-1 theme-transition" style="color: var(--text-muted);">Merchant Group</p>
+                        <p class="text-sm font-medium theme-transition" style="color: var(--text-primary);" id="modal-group">-</p>
                     </div>
                     <div>
                         <p class="text-xs uppercase font-semibold mb-1 theme-transition" style="color: var(--text-muted);">Consignment ID</p>
@@ -1165,6 +1174,10 @@ const API_BASE_URL = 'https://merchant-issues-escalation-databash.onrender.com';
 // Apps Script Web App that looks up Hub / Ops Remarks / KAM Name by Consignment ID
 // across the AD Team sheet's ISD, OSD, and Central tabs.
 const SHEET_LOOKUP_URL = 'https://script.google.com/macros/s/AKfycbxluUMkxZ5HAdh3vtPf3yxZxXvvhbw1rG1wgmkYR8j3MY3NtNrDpsyNNH5OJeMumlhiEA/exec';
+// Apps Script Web App bound to the "AD merchant grouping" sheet — returns the
+// full Business Name -> Assigned Group list so it can be matched client-side
+// against each issue's Merchant field. Replace with your deployed /exec URL.
+const MERCHANT_GROUP_URL = 'https://script.google.com/macros/s/AKfycbyRyz3qRHNXvy5JioyUHLVYGaXtle8z9vfyiG4M7aI2Jp1dr-bX3oiFk15pDmQctAM4/exec';
 
 // ==================== HELPERS ====================
 function escapeHTML(s) {
@@ -1269,6 +1282,7 @@ async function fetchData(silent = false) {
 
     applySessionResponses();
     await enrichWithSheetData();
+    await loadMerchantGroups();
 
     document.getElementById('loading-state').classList.add('hidden');
     document.getElementById('view-tracker').classList.remove('hidden');
@@ -1329,6 +1343,48 @@ async function enrichWithSheetData() {
     } catch (e) {
         console.error('Sheet enrichment error:', e);
     }
+}
+
+// ==================== MERCHANT GROUPING ====================
+// Loaded once per refresh from the "AD merchant grouping" sheet (Business Name
+// -> Assigned Group). Matched client-side against each issue's Merchant field,
+// case-insensitively, so it stays in sync without a lookup per ticket.
+let merchantGroupMap = new Map();
+
+function normalizeMerchantName(name) {
+    return String(name || '').trim().toLowerCase();
+}
+
+async function loadMerchantGroups() {
+    if (!MERCHANT_GROUP_URL || MERCHANT_GROUP_URL.includes('PASTE_YOUR_DEPLOYMENT_ID_HERE')) return;
+    try {
+        const response = await fetch(MERCHANT_GROUP_URL);
+        if (!response.ok) throw new Error(`Merchant group lookup responded ${response.status}`);
+        const data = await response.json();
+        const merchants = data.merchants || [];
+        const map = new Map();
+        merchants.forEach(m => {
+            const key = normalizeMerchantName(m.businessName);
+            if (key) map.set(key, { group: m.group || '', criteria: m.criteria || '' });
+        });
+        merchantGroupMap = map;
+    } catch (e) {
+        console.error('Merchant group lookup error:', e);
+        // Non-fatal — table still renders, just without group badges.
+    }
+}
+
+function getMerchantGroup(merchantName) {
+    const entry = merchantGroupMap.get(normalizeMerchantName(merchantName));
+    return entry ? entry.group : '';
+}
+
+// "CarryBee Issue Group || NN1" -> short badge text "NN1", full string as tooltip.
+function renderGroupBadge(merchantName) {
+    const group = getMerchantGroup(merchantName);
+    if (!group) return '<span class="text-xs" style="color: var(--text-muted);">-</span>';
+    const short = String(group).split('||').pop().trim() || group;
+    return `<span class="tag-pill border bg-gold/10 text-gold border-gold/20" title="${escapeHTML(group)}">${escapeHTML(short)}</span>`;
 }
 
 function updateResponseStats() {
@@ -1438,6 +1494,7 @@ function renderTable() {
     const statusFilter = document.getElementById('statusFilter').value;
     const tagFilter = document.getElementById('tagFilter').value;
     tbody.innerHTML = '';
+    const groupFilter = document.getElementById('groupFilter').value;
     const tagSelect = document.getElementById('tagFilter');
     const currentTag = tagSelect.value;
     // Build the tag filter from data, deduplicated case-insensitively so
@@ -1455,6 +1512,16 @@ function renderTable() {
         tagSelect.innerHTML += `<option value="${escapeHTML(tag)}" ${normalizeTag(tag) === normalizeTag(currentTag) ? 'selected' : ''}>${escapeHTML(tag)}</option>`;
     });
 
+    // Build the merchant group filter from whichever groups actually matched
+    // an issue's merchant this refresh.
+    const groupSelect = document.getElementById('groupFilter');
+    const currentGroup = groupSelect.value;
+    const uniqueGroups = [...new Set(issuesData.map(i => getMerchantGroup(i.merchant)).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+    groupSelect.innerHTML = '<option value="All">All Merchant Groups</option>';
+    uniqueGroups.forEach(group => {
+        groupSelect.innerHTML += `<option value="${escapeHTML(group)}" ${group === currentGroup ? 'selected' : ''}>${escapeHTML(group)}</option>`;
+    });
+
     let filtered = issuesData.filter(issue => {
         const status = getStatus(issue);
         const matchesSearch =
@@ -1464,7 +1531,8 @@ function renderTable() {
             (issue.details && issue.details.toLowerCase().includes(search));
         const matchesStatus = statusFilter === 'All' || status === statusFilter;
         const matchesTag = tagFilter === 'All' || normalizeTag(issue.issueTag) === normalizeTag(tagFilter);
-        return matchesSearch && matchesStatus && matchesTag;
+        const matchesGroup = groupFilter === 'All' || getMerchantGroup(issue.merchant) === groupFilter;
+        return matchesSearch && matchesStatus && matchesTag && matchesGroup;
     });
 
     if (filtered.length === 0) {
@@ -1488,6 +1556,7 @@ function renderTable() {
                     <td class="p-4 font-mono text-gold font-medium text-xs">${escapeHTML(issue.ticketId || '-')}</td>
                     <td class="p-4 text-xs theme-transition" style="color: var(--text-muted);">${escapeHTML(issue.date)}<br><span class="text-xs opacity-70">${escapeHTML(issue.timestamp)}</span></td>
                     <td class="p-4 font-medium text-sm theme-transition" style="color: var(--text-primary);">${escapeHTML(issue.merchant || '-')}</td>
+                    <td class="p-4">${renderGroupBadge(issue.merchant)}</td>
                     <td class="p-4 font-mono text-xs theme-transition" style="color: var(--text-muted);">${escapeHTML(issue.consignmentId || '-')}</td>
                     <td class="p-4"><span class="tag-pill border ${getTagColor(issue.issueTag)}">${escapeHTML(issue.issueTag || 'General')}</span></td>
                     <td class="p-4 details-cell">
@@ -1523,6 +1592,7 @@ function openModal(ticketId) {
     currentModalIssue = issue;
     document.getElementById('modal-ticket-id').innerText = issue.ticketId;
     document.getElementById('modal-merchant').innerText = issue.merchant || '-';
+    document.getElementById('modal-group').innerText = getMerchantGroup(issue.merchant) || '-';
     document.getElementById('modal-consignment').innerText = issue.consignmentId || '-';
     document.getElementById('modal-tag').innerText = issue.issueTag || 'General';
     document.getElementById('modal-tag').className = `tag-pill border ${getTagColor(issue.issueTag)}`;
@@ -2127,12 +2197,13 @@ function switchView(view) {
 
 function exportCSV() {
     let csvContent = "data:text/csv;charset=utf-8,";
-    csvContent += "Ticket ID,Date,Time,Merchant,Consignment,Tag,Status,Responded By,Details,Remarks\n";
+    csvContent += "Ticket ID,Date,Time,Merchant,Group,Consignment,Tag,Status,Responded By,Details,Remarks\n";
     issuesData.forEach(row => {
         const details = (row.details || '').replace(/"/g, '""');
         const remarks = (row.remarks || '').replace(/"/g, '""');
         const respondedBy = (row.respondedBy || '').replace(/"/g, '""');
-        csvContent += `${row.ticketId},${row.date},${row.timestamp},${row.merchant},${row.consignmentId},${row.issueTag},${getStatus(row)},"${respondedBy}","${details}","${remarks}"\n`;
+        const group = (getMerchantGroup(row.merchant) || '').replace(/"/g, '""');
+        csvContent += `${row.ticketId},${row.date},${row.timestamp},${row.merchant},"${group}",${row.consignmentId},${row.issueTag},${getStatus(row)},"${respondedBy}","${details}","${remarks}"\n`;
     });
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
